@@ -1,0 +1,579 @@
+---
+title: Forecast API
+description: Advanced forecasting endpoints for demand prediction, reorder suggestions, and expiry management
+---
+
+The Forecast API provides intelligent forecasting capabilities to help optimize inventory management through predictive analytics.
+
+<Note>
+  All forecast endpoints require authentication and are accessible only to **Manager** and **Admin** roles.
+</Note>
+
+## Demand Forecast
+
+<api method="GET" endpoint="/api/forecast/demand" />
+
+Get demand forecast for a specific product based on historical consumption patterns.
+
+**Access:** Private (Manager/Admin)
+
+### Query Parameters
+
+<ParamField query="productId" type="string" required>
+  MongoDB ObjectId of the product
+</ParamField>
+
+<ParamField query="months" type="number" default={3}>
+  Number of months to forecast (1-12)
+</ParamField>
+
+### Response
+
+<ResponseField name="product" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Product ID
+    </ResponseField>
+    <ResponseField name="productName" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="category" type="string">
+      Product category
+    </ResponseField>
+    <ResponseField name="currentQuantity" type="number">
+      Current stock quantity
+    </ResponseField>
+    <ResponseField name="sku" type="string">
+      Stock keeping unit
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="consumptionRate" type="number">
+  Daily consumption rate (units per day)
+</ResponseField>
+
+<ResponseField name="forecast" type="array">
+  Monthly projections
+  <Expandable title="properties">
+    <ResponseField name="month" type="string">
+      Month identifier (e.g., "Month 1")
+    </ResponseField>
+    <ResponseField name="projectedDemand" type="number">
+      Projected demand for the month
+    </ResponseField>
+    <ResponseField name="projectedStock" type="number">
+      Projected remaining stock
+    </ResponseField>
+    <ResponseField name="needsReorder" type="boolean">
+      Whether reorder is needed (stock less than 10)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="period" type="string">
+  Forecast period description
+</ResponseField>
+
+### Example Request
+
+```bash
+GET /api/forecast/demand?productId=673ab12c5f8e9a001234abcd&months=3
+Authorization: Bearer <token>
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Demand forecast generated successfully",
+  "data": {
+    "product": {
+      "id": "673ab12c5f8e9a001234abcd",
+      "productName": "Fresh Milk",
+      "category": "Dairy",
+      "currentQuantity": 85,
+      "sku": "DA-001"
+    },
+    "consumptionRate": 2.5,
+    "forecast": [
+      {
+        "month": "Month 1",
+        "projectedDemand": 75,
+        "projectedStock": 10,
+        "needsReorder": true
+      },
+      {
+        "month": "Month 2",
+        "projectedDemand": 150,
+        "projectedStock": 0,
+        "needsReorder": true
+      },
+      {
+        "month": "Month 3",
+        "projectedDemand": 225,
+        "projectedStock": 0,
+        "needsReorder": true
+      }
+    ],
+    "period": "3 months"
+  }
+}
+```
+
+<Info>
+  Products require at least 7 days of historical data for accurate forecasting. If insufficient data exists, the endpoint returns a message indicating this limitation.
+</Info>
+
+## Category Demand Forecast
+
+<api method="GET" endpoint="/api/forecast/demand/category/:category" />
+
+Get aggregated demand forecast for all products in a category.
+
+**Access:** Private (Manager/Admin)
+
+### Path Parameters
+
+<ParamField path="category" type="string" required>
+  Category name (case-insensitive)
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="months" type="number" default={3}>
+  Number of months to forecast
+</ParamField>
+
+### Response
+
+<ResponseField name="category" type="string">
+  Category name
+</ResponseField>
+
+<ResponseField name="itemCount" type="number">
+  Number of items in category
+</ResponseField>
+
+<ResponseField name="currentTotalQuantity" type="number">
+  Total current quantity across all items
+</ResponseField>
+
+<ResponseField name="avgConsumptionRate" type="number">
+  Average daily consumption rate for category
+</ResponseField>
+
+<ResponseField name="forecast" type="array">
+  Monthly projections for category
+</ResponseField>
+
+### Example Request
+
+```bash
+GET /api/forecast/demand/category/Dairy?months=2
+Authorization: Bearer <token>
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Category demand forecast generated successfully",
+  "data": {
+    "category": "Dairy",
+    "itemCount": 5,
+    "currentTotalQuantity": 420,
+    "avgConsumptionRate": 3.2,
+    "forecast": [
+      {
+        "month": "Month 1",
+        "projectedDemand": 480,
+        "projectedStock": 0
+      },
+      {
+        "month": "Month 2",
+        "projectedDemand": 960,
+        "projectedStock": 0
+      }
+    ],
+    "period": "2 months"
+  }
+}
+```
+
+## Reorder Suggestions
+
+<api method="GET" endpoint="/api/forecast/reorder-suggestions" />
+
+Get intelligent reorder suggestions based on consumption rates and lead times.
+
+**Access:** Private (Manager/Admin)
+
+### Query Parameters
+
+<ParamField query="leadTime" type="number" default={7}>
+  Lead time in days for receiving orders
+</ParamField>
+
+<ParamField query="safetyStock" type="number" default={1.5}>
+  Safety stock multiplier (e.g., 1.5 = 150% of lead time demand)
+</ParamField>
+
+### Response
+
+<ResponseField name="suggestions" type="array">
+  List of products that need reordering
+  <Expandable title="properties">
+    <ResponseField name="product" type="object">
+      Product details (id, productName, category, sku, supplier)
+    </ResponseField>
+    <ResponseField name="currentQuantity" type="number">
+      Current stock level
+    </ResponseField>
+    <ResponseField name="reorderPoint" type="number">
+      Calculated reorder point threshold
+    </ResponseField>
+    <ResponseField name="suggestedOrderQuantity" type="number">
+      Recommended order quantity (30 days worth)
+    </ResponseField>
+    <ResponseField name="urgency" type="string">
+      Urgency level: CRITICAL (out of stock), HIGH (below half reorder point), MEDIUM
+    </ResponseField>
+    <ResponseField name="consumptionRate" type="number">
+      Daily consumption rate
+    </ResponseField>
+    <ResponseField name="estimatedStockoutDays" type="number">
+      Days until stockout at current consumption rate
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of reorder suggestions
+</ResponseField>
+
+<ResponseField name="parameters" type="object">
+  Configuration parameters used
+</ResponseField>
+
+### Example Request
+
+```bash
+GET /api/forecast/reorder-suggestions?leadTime=5&safetyStock=2.0
+Authorization: Bearer <token>
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Reorder suggestions generated successfully",
+  "data": {
+    "suggestions": [
+      {
+        "product": {
+          "id": "673ab12c5f8e9a001234abcd",
+          "productName": "Chicken Breast",
+          "category": "Meat",
+          "sku": "MT-015",
+          "supplier": "Fresh Poultry Co"
+        },
+        "currentQuantity": 0,
+        "reorderPoint": 15,
+        "suggestedOrderQuantity": 90,
+        "urgency": "CRITICAL",
+        "consumptionRate": 3.0,
+        "estimatedStockoutDays": 0
+      },
+      {
+        "product": {
+          "id": "673ab12c5f8e9a001234abce",
+          "productName": "Yogurt",
+          "category": "Dairy",
+          "sku": "DA-008",
+          "supplier": "Local Dairy Farm"
+        },
+        "currentQuantity": 8,
+        "reorderPoint": 20,
+        "suggestedOrderQuantity": 60,
+        "urgency": "HIGH",
+        "consumptionRate": 2.0,
+        "estimatedStockoutDays": 4
+      }
+    ],
+    "count": 2,
+    "parameters": {
+      "leadTimeDays": 5,
+      "safetyStockMultiplier": 2.0
+    }
+  }
+}
+```
+
+<Warning>
+  CRITICAL urgency items are out of stock and should be ordered immediately. HIGH urgency items are below 50% of their reorder point.
+</Warning>
+
+## Stock Trends
+
+<api method="GET" endpoint="/api/forecast/stock-trends" />
+
+Get historical stock trend analysis for a product.
+
+**Access:** Private (Manager/Admin)
+
+### Query Parameters
+
+<ParamField query="productId" type="string" required>
+  MongoDB ObjectId of the product
+</ParamField>
+
+<ParamField query="period" type="string" default="30days">
+  Analysis period: "7days", "30days", or "90days"
+</ParamField>
+
+### Response
+
+<ResponseField name="product" type="object">
+  Product details
+</ResponseField>
+
+<ResponseField name="trends" type="array">
+  Historical trend data points
+  <Expandable title="properties">
+    <ResponseField name="date" type="string">
+      Date in YYYY-MM-DD format
+    </ResponseField>
+    <ResponseField name="estimatedQuantity" type="number">
+      Estimated quantity on that date
+    </ResponseField>
+    <ResponseField name="isCurrent" type="boolean">
+      Whether this is the current date point
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="analysis" type="object">
+  Trend analysis
+  <Expandable title="properties">
+    <ResponseField name="velocityPerDay" type="number">
+      Daily consumption velocity
+    </ResponseField>
+    <ResponseField name="trend" type="string">
+      Overall trend: "increasing", "decreasing", or "stable"
+    </ResponseField>
+    <ResponseField name="period" type="string">
+      Analysis period
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash
+GET /api/forecast/stock-trends?productId=673ab12c5f8e9a001234abcd&period=30days
+Authorization: Bearer <token>
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Stock trends fetched successfully",
+  "data": {
+    "product": {
+      "id": "673ab12c5f8e9a001234abcd",
+      "productName": "Fresh Milk",
+      "category": "Dairy",
+      "currentQuantity": 85
+    },
+    "trends": [
+      {
+        "date": "2025-02-01",
+        "estimatedQuantity": 160
+      },
+      {
+        "date": "2025-02-06",
+        "estimatedQuantity": 148
+      },
+      {
+        "date": "2025-02-11",
+        "estimatedQuantity": 135
+      },
+      {
+        "date": "2025-02-16",
+        "estimatedQuantity": 123
+      },
+      {
+        "date": "2025-02-21",
+        "estimatedQuantity": 110
+      },
+      {
+        "date": "2025-02-26",
+        "estimatedQuantity": 98
+      },
+      {
+        "date": "2025-03-03",
+        "estimatedQuantity": 85,
+        "isCurrent": true
+      }
+    ],
+    "analysis": {
+      "velocityPerDay": 2.5,
+      "trend": "decreasing",
+      "period": "30days"
+    }
+  }
+}
+```
+
+## Expiry Forecast
+
+<api method="GET" endpoint="/api/forecast/expiry-forecast" />
+
+Predict items likely to expire with remaining stock, helping minimize waste.
+
+**Access:** Private (Manager/Admin)
+
+### Response
+
+<ResponseField name="forecasts" type="array">
+  Items at risk of expiring with stock remaining
+  <Expandable title="properties">
+    <ResponseField name="product" type="object">
+      Product details (id, productName, category, sku)
+    </ResponseField>
+    <ResponseField name="currentQuantity" type="number">
+      Current stock quantity
+    </ResponseField>
+    <ResponseField name="expiryDate" type="string">
+      Product expiry date
+    </ResponseField>
+    <ResponseField name="daysUntilExpiry" type="number">
+      Days remaining until expiry
+    </ResponseField>
+    <ResponseField name="consumptionRate" type="number">
+      Daily consumption rate
+    </ResponseField>
+    <ResponseField name="projectedQuantityAtExpiry" type="number">
+      Estimated quantity that will remain at expiry
+    </ResponseField>
+    <ResponseField name="wastagePercentage" type="number">
+      Percentage of current stock likely to be wasted
+    </ResponseField>
+    <ResponseField name="riskLevel" type="string">
+      Risk level: HIGH (greater than 50% wastage), MEDIUM (25-50%), LOW (less than 25%)
+    </ResponseField>
+    <ResponseField name="recommendation" type="string">
+      Actionable recommendation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Total number of items at risk
+</ResponseField>
+
+<ResponseField name="highRiskCount" type="number">
+  Number of high-risk items
+</ResponseField>
+
+### Example Request
+
+```bash
+GET /api/forecast/expiry-forecast
+Authorization: Bearer <token>
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Expiry forecast generated successfully",
+  "data": {
+    "forecasts": [
+      {
+        "product": {
+          "id": "673ab12c5f8e9a001234abcd",
+          "productName": "Strawberries",
+          "category": "Produce",
+          "sku": "PR-025"
+        },
+        "currentQuantity": 100,
+        "expiryDate": "2025-03-08T00:00:00.000Z",
+        "daysUntilExpiry": 5,
+        "consumptionRate": 8.5,
+        "projectedQuantityAtExpiry": 58,
+        "wastagePercentage": 58.0,
+        "riskLevel": "HIGH",
+        "recommendation": "Consider promotional pricing or immediate sale"
+      },
+      {
+        "product": {
+          "id": "673ab12c5f8e9a001234abce",
+          "productName": "Cheese",
+          "category": "Dairy",
+          "sku": "DA-012"
+        },
+        "currentQuantity": 45,
+        "expiryDate": "2025-03-15T00:00:00.000Z",
+        "daysUntilExpiry": 12,
+        "consumptionRate": 3.0,
+        "projectedQuantityAtExpiry": 9,
+        "wastagePercentage": 20.0,
+        "riskLevel": "LOW",
+        "recommendation": "Current consumption rate is acceptable"
+      }
+    ],
+    "count": 2,
+    "highRiskCount": 1
+  }
+}
+```
+
+<Tip>
+  Use high-risk expiry forecasts to plan promotional campaigns, discounts, or alternative distribution channels to minimize waste and maximize revenue recovery.
+</Tip>
+
+## Error Responses
+
+All forecast endpoints return standard error responses:
+
+| Status Code | Description |
+|------------|-------------|
+| 400 | Bad Request - Missing or invalid parameters |
+| 401 | Unauthorized - Invalid or missing token |
+| 403 | Forbidden - Insufficient permissions (Worker role) |
+| 404 | Not Found - Product or category not found |
+| 500 | Internal Server Error - Server-side error |
+
+### Example Error Response
+
+```json
+{
+  "success": false,
+  "message": "Product ID is required"
+}
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Analytics API" icon="chart-line" href="/api/analytics">
+    Demand forecasting and business intelligence
+  </Card>
+  <Card title="Inventory API" icon="boxes" href="/api/inventory">
+    Inventory management endpoints
+  </Card>
+  <Card title="Alerts API" icon="bell" href="/api/alerts">
+    Low stock and expiry alerts
+  </Card>
+  <Card title="Demand Forecasting Feature" icon="crystal-ball" href="/features/demand-forecasting">
+    Learn about forecasting algorithms
+  </Card>
+</CardGroup>

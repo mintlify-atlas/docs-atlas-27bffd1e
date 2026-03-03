@@ -78,6 +78,7 @@
               "api/inventory",
               "api/tasks",
               "api/analytics",
+              "api/forecast",
               "api/alerts",
               "api/users"
             ]
