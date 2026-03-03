@@ -1,0 +1,452 @@
+---
+title: Analytics Dashboard
+description: Role-based dashboards with real-time KPI cards, metrics visualization, and data-driven insights
+---
+
+## Overview
+
+SmartShelf provides three distinct dashboard experiences tailored to each user role: Admin, Manager, and Worker. Each dashboard displays role-appropriate metrics, visualizations, and actionable insights to optimize warehouse operations.
+
+## Dashboard Types
+
+<CardGroup cols={3}>
+  <Card title="Admin Dashboard" icon="user-shield" color="#ef4444">
+    System-wide overview and user management
+  </Card>
+  <Card title="Manager Dashboard" icon="user-tie" color="#f59e0b">
+    Operational insights and forecasting
+  </Card>
+  <Card title="Worker Dashboard" icon="user" color="#3b82f6">
+    Task management and completion
+  </Card>
+</CardGroup>
+
+## Admin Dashboard
+
+The Admin Dashboard provides a comprehensive system-wide view with user management capabilities.
+
+### KPI Cards
+
+Four primary metrics displayed at the top (AdminDashboard.tsx:46-98):
+
+<CardGroup cols={2}>
+  <Card title="Total Items" icon="archive-box">
+    Total number of inventory items across all categories
+  </Card>
+  <Card title="Total Quantity" icon="boxes-stacked">
+    Cumulative quantity of all items in stock
+  </Card>
+  <Card title="Low Stock" icon="triangle-exclamation">
+    Items with quantity below threshold (yellow warning)
+  </Card>
+  <Card title="Critical Alerts" icon="circle-exclamation">
+    Sum of expired and expiring soon items (red alert)
+  </Card>
+</CardGroup>
+
+**Implementation:**
+```typescript
+// Total Items Card
+<div className="bg-card-light dark:bg-card-dark p-6 rounded-2xl">
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-sm text-slate-500">Total Items</p>
+      <h3 className="text-3xl font-bold">{summary?.totalItems || 0}</h3>
+    </div>
+    <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+      <ArchiveBox className="w-6 h-6 text-blue-600" />
+    </div>
+  </div>
+</div>
+```
+
+### Alert Summary Section
+
+Breakdown of all system alerts (AdminDashboard.tsx:101-129):
+
+<Tabs>
+  <Tab title="Expired Items">
+    Items past their expiry date (critical priority)
+    - Color: Red
+    - Action Required: Immediate removal
+  </Tab>
+  <Tab title="Expiring Soon">
+    Items expiring within 7 days (high priority)
+    - Color: Orange
+    - Action Required: Prioritize for sale
+  </Tab>
+  <Tab title="Low Stock">
+    Items below reorder threshold (medium priority)
+    - Color: Yellow
+    - Action Required: Reorder stock
+  </Tab>
+  <Tab title="Out of Stock">
+    Items with zero quantity (high priority)
+    - Color: Gray
+    - Action Required: Immediate restock
+  </Tab>
+</Tabs>
+
+**Alert Card Design:**
+```typescript
+<div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200">
+  <p className="text-sm text-red-600 font-medium">Expired Items</p>
+  <p className="text-2xl font-bold text-red-700 mt-1">
+    {alerts?.breakdown?.expired || 0}
+  </p>
+</div>
+```
+
+### Category Distribution Table
+
+Inventory breakdown by category (AdminDashboard.tsx:132-154):
+
+| Category | Items | Total Quantity |
+|----------|-------|----------------|
+| Dairy    | 45    | 1,245         |
+| Bakery   | 32    | 890           |
+| Produce  | 58    | 2,100         |
+| Meat     | 28    | 650           |
+| Beverages| 41    | 1,800         |
+| Seafood  | 15    | 380           |
+
+**Data Fetching:**
+```typescript
+const fetchDashboardData = async () => {
+  const [summaryData, alertData, categories] = await Promise.all([
+    inventoryService.getSummary(),
+    alertService.getSummary(),
+    inventoryService.getCategoryAnalytics(),
+  ]);
+};
+```
+
+## Manager Dashboard
+
+The Manager Dashboard focuses on operational efficiency with live alerts, forecasting, and analytics.
+
+### KPI Overview
+
+Four operational metrics (ManagerDashboard.tsx:430-482):
+
+<Steps>
+  <Step title="Total Items">
+    Current inventory count with blue indicator
+  </Step>
+  <Step title="Low Stock">
+    Items requiring reorder with yellow warning
+  </Step>
+  <Step title="Expiring Soon">
+    Items expiring within 7 days with orange alert
+  </Step>
+  <Step title="Active Tasks">
+    Non-completed tasks with purple badge
+  </Step>
+</Steps>
+
+### Live Alerts Feed
+
+Real-time notification-style alerts (ManagerDashboard.tsx:485-508):
+
+**Features:**
+- Severity indicators (emoji-based)
+- Human-readable messages
+- Category labels
+- Scrollable feed (max height: 256px)
+- Timestamp display
+
+**Implementation:**
+```typescript
+const getSeverityIcon = (severity: string) => {
+  switch (severity) {
+    case 'critical': return '🔴';
+    case 'high': return '🟠';
+    case 'medium': return '🟡';
+    default: return '🔵';
+  }
+};
+
+// Alert Card
+<div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
+  <span className="text-xl">{getSeverityIcon(alert.severity)}</span>
+  <div className="flex-1">
+    <p className={`text-sm font-medium ${getSeverityColor(alert.severity)}`}>
+      {alert.message}
+    </p>
+    <p className="text-xs text-slate-500 mt-1">
+      {alert.category} • Just now
+    </p>
+  </div>
+</div>
+```
+
+### Demand Forecasting Visualization
+
+Interactive 7-day projection charts (ManagerDashboard.tsx:511-713):
+
+<Note>
+  The forecasting system uses three algorithms: Ensemble (primary), Linear Regression, and Moving Average for accurate predictions.
+</Note>
+
+**Product Selection Tabs:**
+```typescript
+<button
+  onClick={() => setSelectedForecast(index)}
+  className={selectedForecast === index ? 'border-primary bg-primary/10' : ''}
+>
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-xs text-slate-500">{item.product.category}</p>
+      <p className="font-semibold">{item.product.name}</p>
+    </div>
+    <div className="text-right">
+      <p className="text-lg font-bold">{item.product.currentQuantity}</p>
+    </div>
+  </div>
+</button>
+```
+
+**Forecast Metrics:**
+<CardGroup cols={4}>
+  <Card title="Current Stock">
+    Real-time quantity level
+  </Card>
+  <Card title="Daily Consumption">
+    Average units consumed per day
+  </Card>
+  <Card title="Forecast Accuracy">
+    Confidence score percentage
+  </Card>
+  <Card title="Reorder Days">
+    Days until reorder needed
+  </Card>
+</CardGroup>
+
+**SVG Chart Implementation:**
+```typescript
+<svg viewBox="0 0 700 260" className="w-full">
+  {/* Main forecast line */}
+  <polyline 
+    points={pts(ensemble)} 
+    fill="none" 
+    stroke="currentColor" 
+    className="text-primary" 
+    strokeWidth={2.5} 
+  />
+  
+  {/* Regression line */}
+  <polyline 
+    points={pts(reg.yhat)} 
+    stroke="currentColor" 
+    className="text-slate-500" 
+    strokeWidth={2} 
+    strokeDasharray="2,6" 
+  />
+  
+  {/* Data points */}
+  {ensemble.map((v, i) => (
+    <circle cx={xFor(i)} cy={yFor(v)} r={3.5} fill="currentColor">
+      <title>Day {days[i]} • Ensemble: {v}</title>
+    </circle>
+  ))}
+</svg>
+```
+
+### FEFO Ordering Panel
+
+Prioritized dispatch order (ManagerDashboard.tsx:716-755):
+
+**Display Format:**
+```
+#1  Fresh Milk               2d left
+    Dairy • SKU: DA-001
+    Qty: 25 | Local Dairy Farm
+
+#2  Greek Yogurt            3d left
+    Dairy • SKU: DA-003
+    Qty: 15 | Dairy Co.
+```
+
+**Urgency Color Coding:**
+- Critical (≤3 days): Red background
+- High (≤7 days): Orange background
+- Medium (≤14 days): Yellow background
+- Low (>14 days): Blue background
+
+### Top Selling Products
+
+Sales velocity rankings (ManagerDashboard.tsx:758-797):
+
+**Metrics Displayed:**
+- Sales velocity (units/day)
+- Current stock quantity
+- Estimated units sold
+- Ranking position
+
+```typescript
+<div className="flex items-start justify-between">
+  <div className="flex-1">
+    <div className="flex items-center gap-2">
+      <span className="text-lg font-bold text-primary">#{index + 1}</span>
+      <h3 className="font-semibold">{product.productName}</h3>
+    </div>
+  </div>
+  <div className="text-right">
+    <p className="text-2xl font-bold text-primary">{product.salesVelocity}</p>
+    <p className="text-xs text-slate-500">units/day</p>
+  </div>
+</div>
+```
+
+## Worker Dashboard
+
+Simplified task-focused interface for warehouse workers.
+
+### Task Statistics
+
+Three key metrics (WorkerDashboard.tsx:71-106):
+
+<CardGroup cols={3}>
+  <Card title="Pending" icon="clock" color="#64748b">
+    Tasks awaiting action
+  </Card>
+  <Card title="In Progress" icon="spinner" color="#eab308">
+    Currently active tasks
+  </Card>
+  <Card title="Completed" icon="check" color="#22c55e">
+    Finished tasks
+  </Card>
+</CardGroup>
+
+### Task List Interface
+
+Status-filtered task view (WorkerDashboard.tsx:110-189):
+
+**Filter Buttons:**
+- All tasks
+- Pending only
+- In Progress only
+
+**Task Actions:**
+```typescript
+{task.status === 'Pending' && (
+  <button
+    onClick={() => handleStatusChange(task.id, 'In Progress')}
+    className="bg-yellow-500 text-white"
+  >
+    Start
+  </button>
+)}
+
+{task.status === 'In Progress' && (
+  <button
+    onClick={() => handleStatusChange(task.id, 'Completed')}
+    className="bg-green-500 text-white"
+  >
+    Complete
+  </button>
+)}
+```
+
+## Real-Time Data Visualization
+
+All dashboards use live data fetching:
+
+```typescript
+useEffect(() => {
+  fetchDashboardData();
+}, []);
+
+const fetchDashboardData = async () => {
+  try {
+    setLoading(true);
+    const [summaryData, alertData, categories] = await Promise.all([
+      inventoryService.getSummary(),
+      alertService.getSummary(),
+      inventoryService.getCategoryAnalytics(),
+    ]);
+    
+    setSummary(summaryData);
+    setAlerts(alertData);
+    setCategoryData(categories);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Role-Based Views
+
+| Feature | Admin | Manager | Worker |
+|---------|-------|---------|--------|
+| Inventory KPIs | ✅ | ✅ | ❌ |
+| Alert Summary | ✅ | ✅ | ❌ |
+| Category Distribution | ✅ | ❌ | ❌ |
+| Live Alert Feed | ❌ | ✅ | ❌ |
+| Demand Forecasting | ❌ | ✅ | ❌ |
+| FEFO Ordering | ❌ | ✅ | ❌ |
+| Top Products | ❌ | ✅ | ❌ |
+| Task Statistics | ❌ | ❌ | ✅ |
+| My Tasks List | ❌ | ❌ | ✅ |
+
+## Dark Mode Support
+
+All dashboards fully support dark mode:
+
+```css
+/* Light mode */
+bg-card-light dark:bg-card-dark
+text-slate-600 dark:text-slate-400
+border-border-light dark:border-border-dark
+
+/* Dark mode classes */
+bg-slate-50 dark:bg-slate-800
+text-slate-700 dark:text-slate-300
+```
+
+## Responsive Design
+
+Dashboards adapt to all screen sizes:
+
+- **Desktop**: 4-column KPI grid
+- **Tablet**: 2-column KPI grid
+- **Mobile**: 1-column stacked layout
+
+```typescript
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  {/* KPI Cards */}
+</div>
+```
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Parallel Data Fetching">
+    All dashboard data is fetched concurrently using `Promise.all()` for faster load times.
+  </Accordion>
+  
+  <Accordion title="Loading States">
+    Skeleton screens and spinners provide visual feedback during data loading.
+  </Accordion>
+  
+  <Accordion title="Memoization">
+    Complex calculations are memoized to prevent unnecessary re-renders.
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Inventory Management" icon="boxes" href="/features/inventory-management">
+    Manage inventory items
+  </Card>
+  <Card title="Alert System" icon="bell" href="/features/alert-system">
+    Configure alert thresholds
+  </Card>
+  <Card title="Demand Forecasting" icon="chart-line" href="/features/demand-forecasting">
+    Advanced forecasting algorithms
+  </Card>
+  <Card title="Task Management" icon="list-check" href="/features/task-management">
+    Create and assign tasks
+  </Card>
+</CardGroup>

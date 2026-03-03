@@ -1,0 +1,570 @@
+---
+title: Deployment Guide
+description: Complete guide to deploying SmartShelf inventory management system to production
+---
+
+This guide covers deploying SmartShelf to production, including build processes, environment configuration, and security best practices.
+
+## Pre-Deployment Checklist
+
+Before deploying to production, ensure you have:
+
+- [ ] MongoDB database set up (local or MongoDB Atlas)
+- [ ] Production environment variables configured
+- [ ] Domain name configured (if applicable)
+- [ ] SSL/TLS certificates ready
+- [ ] Backend and frontend code tested locally
+- [ ] All dependencies up to date and audited for security
+
+## Frontend Production Build
+
+<Steps>
+  <Step title="Configure production environment variables">
+    Create a `.env.production` file in the `frontend` directory:
+    
+    ```env
+    VITE_API_URL=https://api.yourdomain.com/api
+    ```
+    
+    Replace `https://api.yourdomain.com` with your actual backend API URL.
+  </Step>
+  
+  <Step title="Build the frontend">
+    Navigate to the frontend directory and run the build command:
+    
+    ```bash
+    cd frontend
+    npm run build
+    ```
+    
+    This creates an optimized production build in the `dist` directory.
+  </Step>
+  
+  <Step title="Test the production build locally">
+    Preview the production build before deploying:
+    
+    ```bash
+    npm run preview
+    ```
+    
+    This serves the built files locally so you can test them.
+  </Step>
+  
+  <Step title="Deploy to hosting platform">
+    Deploy the `dist` directory to your hosting platform of choice.
+    
+    **Recommended platforms:**
+    - **Vercel** - Zero-config deployment for Vite apps
+    - **Netlify** - Easy deployment with Git integration
+    - **AWS S3 + CloudFront** - Scalable static hosting
+    - **Nginx** - Self-hosted solution
+  </Step>
+</Steps>
+
+### Frontend Deployment Examples
+
+#### Vercel Deployment
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Navigate to frontend directory
+cd frontend
+
+# Deploy
+vercel --prod
+```
+
+#### Netlify Deployment
+
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Navigate to frontend directory
+cd frontend
+
+# Build and deploy
+netlify deploy --prod --dir=dist
+```
+
+#### Nginx Configuration
+
+For self-hosted deployments with Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    root /var/www/smartshelf/frontend/dist;
+    index index.html;
+    
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Enable gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+}
+```
+
+## Backend Production Setup
+
+<Steps>
+  <Step title="Configure production environment variables">
+    Create a `.env` file on your production server with production values:
+    
+    ```env
+    # Server Configuration
+    PORT=5000
+    NODE_ENV=production
+    
+    # Database Configuration
+    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smartshelf
+    
+    # JWT Configuration
+    JWT_SECRET=your_production_jwt_secret_key_at_least_32_characters_long
+    JWT_EXPIRE=24h
+    
+    # CORS Configuration
+    ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+    ```
+    
+    <Warning>
+      Use different `JWT_SECRET` values for development and production. Generate a new secure secret for production.
+    </Warning>
+  </Step>
+  
+  <Step title="Install production dependencies">
+    On your production server, navigate to the backend directory and install dependencies:
+    
+    ```bash
+    cd backend
+    npm install --production
+    ```
+    
+    The `--production` flag skips development dependencies.
+  </Step>
+  
+  <Step title="Set up process manager">
+    Use a process manager to keep your application running and restart it on crashes.
+    
+    **Option 1: PM2 (Recommended)**
+    ```bash
+    # Install PM2 globally
+    npm install -g pm2
+    
+    # Start the application
+    pm2 start server.js --name smartshelf-backend
+    
+    # Save PM2 configuration
+    pm2 save
+    
+    # Set up PM2 to start on system boot
+    pm2 startup
+    ```
+    
+    **Option 2: systemd service**
+    Create `/etc/systemd/system/smartshelf.service`:
+    ```ini
+    [Unit]
+    Description=SmartShelf Backend
+    After=network.target
+    
+    [Service]
+    Type=simple
+    User=www-data
+    WorkingDirectory=/path/to/backend
+    ExecStart=/usr/bin/node server.js
+    Restart=on-failure
+    Environment=NODE_ENV=production
+    
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    
+    Enable and start the service:
+    ```bash
+    sudo systemctl enable smartshelf
+    sudo systemctl start smartshelf
+    ```
+  </Step>
+  
+  <Step title="Configure reverse proxy">
+    Set up Nginx as a reverse proxy to handle SSL and forward requests to your Node.js backend.
+    
+    Create `/etc/nginx/sites-available/smartshelf-api`:
+    ```nginx
+    server {
+        listen 80;
+        server_name api.yourdomain.com;
+        
+        location / {
+            proxy_pass http://localhost:5000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+    ```
+    
+    Enable the site:
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/smartshelf-api /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl reload nginx
+    ```
+  </Step>
+  
+  <Step title="Set up SSL/TLS with Let's Encrypt">
+    Use Certbot to get free SSL certificates:
+    
+    ```bash
+    # Install Certbot
+    sudo apt-get install certbot python3-certbot-nginx
+    
+    # Obtain and install certificate
+    sudo certbot --nginx -d api.yourdomain.com
+    
+    # Test automatic renewal
+    sudo certbot renew --dry-run
+    ```
+  </Step>
+</Steps>
+
+### Backend Deployment Platforms
+
+#### Heroku
+
+```bash
+# Install Heroku CLI
+npm install -g heroku
+
+# Login to Heroku
+heroku login
+
+# Create app
+cd backend
+heroku create smartshelf-api
+
+# Set environment variables
+heroku config:set NODE_ENV=production
+heroku config:set MONGODB_URI=your_mongodb_uri
+heroku config:set JWT_SECRET=your_jwt_secret
+heroku config:set JWT_EXPIRE=24h
+heroku config:set ALLOWED_ORIGINS=https://yourdomain.com
+
+# Deploy
+git push heroku main
+```
+
+#### Railway
+
+1. Sign up at [Railway.app](https://railway.app)
+2. Click **"New Project"** → **"Deploy from GitHub repo"**
+3. Select your repository and backend directory
+4. Add environment variables in the **"Variables"** tab
+5. Railway automatically detects Node.js and deploys
+
+#### DigitalOcean App Platform
+
+1. Create account at [DigitalOcean](https://www.digitalocean.com)
+2. Click **"Create App"** and connect your GitHub repository
+3. Select the backend directory
+4. Configure environment variables
+5. Choose your plan and deploy
+
+## Environment Variable Management
+
+<Warning>
+  Never hardcode secrets or commit `.env` files to version control!
+</Warning>
+
+### Secure Storage Options
+
+1. **Platform-specific environment variables**
+   - Use your hosting platform's environment variable management (Heroku Config Vars, Vercel Environment Variables, etc.)
+
+2. **Secret management services**
+   - **AWS Secrets Manager** - Managed secret storage for AWS deployments
+   - **HashiCorp Vault** - Enterprise secret management
+   - **Azure Key Vault** - Microsoft's secret management solution
+
+3. **Environment files on server**
+   - Store `.env` file on server with restricted permissions:
+   ```bash
+   chmod 600 .env
+   chown www-data:www-data .env
+   ```
+
+### Environment Variable Validation
+
+Add validation to ensure all required environment variables are present:
+
+```javascript
+// backend/src/config/validateEnv.js
+const requiredEnvVars = [
+  'MONGODB_URI',
+  'JWT_SECRET',
+  'ALLOWED_ORIGINS'
+];
+
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName]) {
+    throw new Error(`Missing required environment variable: ${varName}`);
+  }
+});
+```
+
+## MongoDB Production Configuration
+
+### MongoDB Atlas Production Setup
+
+<Steps>
+  <Step title="Upgrade to production tier">
+    Free tier (M0) is suitable for development, but consider upgrading for production:
+    - **M10** - Recommended minimum for production
+    - **M20+** - For higher traffic applications
+  </Step>
+  
+  <Step title="Enable automated backups">
+    1. Go to your cluster in MongoDB Atlas
+    2. Navigate to **"Backup"** tab
+    3. Enable **"Cloud Backup"**
+    4. Configure backup schedule and retention policy
+  </Step>
+  
+  <Step title="Configure IP allowlist">
+    Replace "Allow access from anywhere" with specific IP addresses:
+    1. Go to **"Network Access"**
+    2. Remove 0.0.0.0/0 entry
+    3. Add your production server IPs only
+  </Step>
+  
+  <Step title="Enable monitoring and alerts">
+    1. Go to **"Alerts"** in Atlas
+    2. Set up alerts for:
+       - High connection count
+       - CPU usage
+       - Disk usage
+       - Query performance issues
+  </Step>
+  
+  <Step title="Review and optimize indexes">
+    Use the Atlas Performance Advisor:
+    1. Go to **"Performance Advisor"**
+    2. Review suggested indexes
+    3. Implement recommended optimizations
+  </Step>
+</Steps>
+
+### Self-Hosted MongoDB Production
+
+If running your own MongoDB server:
+
+1. **Enable authentication:**
+   ```javascript
+   // Create admin user
+   use admin
+   db.createUser({
+     user: "admin",
+     pwd: "securePassword",
+     roles: [{ role: "userAdminAnyDatabase", db: "admin" }]
+   })
+   ```
+
+2. **Enable SSL/TLS:**
+   ```bash
+   mongod --tlsMode requireTLS \
+          --tlsCertificateKeyFile /path/to/cert.pem
+   ```
+
+3. **Configure firewall:**
+   ```bash
+   # Allow MongoDB port only from application servers
+   sudo ufw allow from APP_SERVER_IP to any port 27017
+   ```
+
+4. **Set up replication:**
+   - Use replica sets for high availability
+   - Minimum 3-member replica set recommended
+
+## Security Best Practices
+
+<Warning>
+  Security is critical for production deployments. Follow these best practices to protect your application and data.
+</Warning>
+
+### Application Security
+
+1. **Use HTTPS everywhere**
+   - Enable SSL/TLS for all connections
+   - Redirect HTTP to HTTPS
+   - Use HSTS headers
+
+2. **Implement rate limiting**
+   ```javascript
+   // backend/src/middlewares/rateLimiter.js
+   const rateLimit = require('express-rate-limit');
+   
+   const limiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 minutes
+     max: 100, // Limit each IP to 100 requests per window
+     message: 'Too many requests, please try again later.'
+   });
+   
+   app.use('/api/', limiter);
+   ```
+
+3. **Enable security headers**
+   ```javascript
+   const helmet = require('helmet');
+   app.use(helmet());
+   ```
+
+4. **Validate and sanitize input**
+   - Use validation libraries (express-validator, joi)
+   - Sanitize user input to prevent injection attacks
+   - Implement proper error handling
+
+5. **Keep dependencies updated**
+   ```bash
+   # Check for vulnerabilities
+   npm audit
+   
+   # Fix automatically if possible
+   npm audit fix
+   ```
+
+### Database Security
+
+1. **Use strong passwords**
+   - Minimum 16 characters
+   - Mix of uppercase, lowercase, numbers, symbols
+   - Use password generator
+
+2. **Principle of least privilege**
+   - Grant minimum necessary permissions
+   - Use separate database users for different services
+
+3. **Enable encryption at rest**
+   - MongoDB Atlas encrypts data at rest by default
+   - For self-hosted, enable encryption
+
+4. **Monitor database access**
+   - Enable audit logging
+   - Review access logs regularly
+   - Set up alerts for suspicious activity
+
+### API Security
+
+1. **Implement proper authentication**
+   - Use strong JWT secrets
+   - Set reasonable token expiration times
+   - Implement token refresh mechanism
+
+2. **Configure CORS properly**
+   ```javascript
+   // Only allow specific origins
+   const corsOptions = {
+     origin: process.env.ALLOWED_ORIGINS.split(','),
+     credentials: true,
+     optionsSuccessStatus: 200
+   };
+   app.use(cors(corsOptions));
+   ```
+
+3. **Protect sensitive endpoints**
+   - Require authentication for all protected routes
+   - Implement role-based access control
+   - Log access to sensitive operations
+
+## Monitoring and Logging
+
+### Application Monitoring
+
+1. **PM2 Monitoring**
+   ```bash
+   pm2 monit
+   pm2 logs smartshelf-backend
+   ```
+
+2. **Application Performance Monitoring (APM)**
+   - **New Relic** - Full-stack monitoring
+   - **Datadog** - Infrastructure and APM
+   - **Sentry** - Error tracking and monitoring
+
+### Logging Best Practices
+
+```javascript
+// Use a logging library like winston
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+```
+
+## Performance Optimization
+
+1. **Enable caching**
+   - Use Redis for session storage and caching
+   - Implement API response caching
+   - Enable browser caching for static assets
+
+2. **Database optimization**
+   - Create indexes for frequently queried fields
+   - Use connection pooling
+   - Implement query result caching
+
+3. **Frontend optimization**
+   - Enable gzip/brotli compression
+   - Implement lazy loading for routes
+   - Optimize images and assets
+   - Use CDN for static assets
+
+4. **Load balancing**
+   - Use multiple backend instances
+   - Implement load balancer (Nginx, HAProxy)
+   - Scale horizontally as traffic grows
+
+## Backup and Disaster Recovery
+
+1. **Automated backups**
+   - Daily automated backups (MongoDB Atlas provides this)
+   - Store backups in multiple locations
+   - Test restore procedures regularly
+
+2. **Version control**
+   - Tag releases in Git
+   - Maintain changelog
+   - Keep deployment documentation updated
+
+3. **Rollback strategy**
+   - Keep previous versions available
+   - Document rollback procedures
+   - Test rollback in staging environment
+
+<Note>
+  For more configuration details, see [Environment Variables](/configuration/environment-variables) and [Database Setup](/configuration/database-setup) guides.
+</Note>

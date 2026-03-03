@@ -1,0 +1,453 @@
+---
+title: Worker Guide
+description: Complete guide for SmartShelf workers including viewing assigned tasks, updating task status, and dashboard navigation
+---
+
+## Overview
+
+As a SmartShelf Worker, your primary responsibility is to complete tasks assigned by managers and administrators. This guide covers how to view, manage, and complete your assigned tasks efficiently.
+
+## Worker Capabilities
+
+According to the permission matrix, workers have the following privileges:
+
+| Feature | Access Level |
+|---------|-------------|
+| Dashboard Overview | ✅ Full Access |
+| View Inventory | ✅ Read-Only Access |
+| Add/Edit Inventory | ❌ Manager/Admin Only |
+| Delete Inventory | ❌ Manager/Admin Only |
+| User Management | ❌ Admin Only |
+| Create Tasks | ❌ Manager/Admin Only |
+| View All Tasks | ❌ Manager/Admin Only |
+| **View My Tasks** | ✅ Full Access |
+| **Update Task Status** | ✅ Full Access |
+| View Analytics | ❌ Manager/Admin Only |
+| FEFO Ordering | ❌ Manager/Admin Only |
+| Demand Forecast | ❌ Manager/Admin Only |
+
+<Info>
+Workers have focused access to their assigned tasks and read-only inventory viewing. You cannot create or modify inventory items or access analytics.
+</Info>
+
+## Dashboard Overview
+
+Your worker dashboard provides a clear view of your task workload:
+
+### Task Statistics
+
+<CardGroup cols={3}>
+  <Card title="Pending" icon="clock">
+    Tasks assigned to you that haven't been started yet
+  </Card>
+  
+  <Card title="In Progress" icon="spinner">
+    Tasks you're currently working on
+  </Card>
+  
+  <Card title="Completed" icon="check">
+    Tasks you've finished
+  </Card>
+</CardGroup>
+
+Each stat card displays:
+- The count of tasks in that status
+- A color-coded icon for quick visual reference:
+  - Gray for Pending
+  - Yellow for In Progress
+  - Green for Completed
+
+## Managing Your Tasks
+
+### Viewing Your Task List
+
+The "My Tasks" section shows all tasks assigned to you with:
+- Task description (what needs to be done)
+- Current status badge
+- Action buttons based on status
+
+### Task Status Workflow
+
+Tasks progress through three states:
+
+<Steps>
+  <Step title="Pending">
+    Task has been assigned but not started. Click **"Start"** to begin.
+  </Step>
+  
+  <Step title="In Progress">
+    You're actively working on this task. Click **"Complete"** when finished.
+  </Step>
+  
+  <Step title="Completed">
+    Task is done. No further action needed.
+  </Step>
+</Steps>
+
+### Filtering Tasks
+
+Use the filter buttons to view specific task types:
+
+- **All**: Shows all your tasks regardless of status
+- **Pending**: Only tasks you haven't started
+- **In Progress**: Only tasks you're currently working on
+
+<Tip>
+Focus on "Pending" tasks at the start of your shift and "In Progress" tasks to ensure you complete what you've started.
+</Tip>
+
+## Task Completion Workflows
+
+### Starting a New Task
+
+<Steps>
+  <Step title="Review Pending Tasks">
+    Check your "Pending" task list when you begin your shift.
+  </Step>
+  
+  <Step title="Read Task Description">
+    Carefully read what needs to be done. If unclear, ask your manager.
+  </Step>
+  
+  <Step title="Click 'Start' Button">
+    This changes the status to "In Progress" and notifies managers you're working on it.
+  </Step>
+  
+  <Step title="Perform the Task">
+    Complete the assigned work according to the description.
+  </Step>
+</Steps>
+
+### Completing a Task
+
+<Steps>
+  <Step title="Finish the Work">
+    Ensure all requirements in the task description are met.
+  </Step>
+  
+  <Step title="Verify Completion">
+    Double-check that everything is done correctly.
+  </Step>
+  
+  <Step title="Click 'Complete' Button">
+    This marks the task as "Completed" and removes it from your active workload.
+  </Step>
+  
+  <Step title="Move to Next Task">
+    The task will show with a green "Completed" badge. Proceed to your next pending task.
+  </Step>
+</Steps>
+
+## Common Task Types
+
+You may encounter various task types. Here's how to handle each:
+
+### Inventory Inspection Tasks
+
+<Card title="Example: 'Inspect expired items in dairy section'">
+  <Steps>
+    <Step title="Navigate to Inventory Page">
+      View the inventory list (read-only access).
+    </Step>
+    
+    <Step title="Filter by Category">
+      Use filters to show only the specified category (e.g., Dairy).
+    </Step>
+    
+    <Step title="Check Expiry Dates">
+      Physically verify items with approaching or past expiry dates.
+    </Step>
+    
+    <Step title="Report Findings">
+      Note any discrepancies and inform your manager.
+    </Step>
+  </Steps>
+</Card>
+
+### Stock Replenishment Tasks
+
+<Card title="Example: 'Restock Fresh Milk - current level: 25 units'">
+  <Steps>
+    <Step title="Locate Product">
+      Find the specified product in the warehouse.
+    </Step>
+    
+    <Step title="Check Current Stock">
+      Verify the quantity matches the task description.
+    </Step>
+    
+    <Step title="Replenish Stock">
+      Add new inventory following FEFO principles (oldest expiry dates first).
+    </Step>
+    
+    <Step title="Notify Manager">
+      Inform manager to update inventory quantities in the system.
+    </Step>
+  </Steps>
+</Card>
+
+### Quality Control Tasks
+
+<Card title="Example: 'Check quality of Chicken Breast batch ME-001'">
+  <Steps>
+    <Step title="Locate Batch">
+      Find the product by SKU (Stock Keeping Unit).
+    </Step>
+    
+    <Step title="Inspect Quality">
+      Check for damage, spoilage, or temperature issues.
+    </Step>
+    
+    <Step title="Document Issues">
+      Note any problems found during inspection.
+    </Step>
+    
+    <Step title="Report to Manager">
+      Immediately inform manager of any quality concerns.
+    </Step>
+  </Steps>
+</Card>
+
+### Inventory Audit Tasks
+
+<Card title="Example: 'Verify physical count for Bakery items'">
+  <Steps>
+    <Step title="Print or View Inventory List">
+      Get the current system count for the category.
+    </Step>
+    
+    <Step title="Physically Count Items">
+      Manually count each item in the warehouse.
+    </Step>
+    
+    <Step title="Compare Counts">
+      Note any discrepancies between system and physical counts.
+    </Step>
+    
+    <Step title="Report Discrepancies">
+      Inform manager who will update the system.
+    </Step>
+  </Steps>
+</Card>
+
+## Viewing Inventory (Read-Only)
+
+While you cannot edit inventory, you have read access to:
+
+- **Product Name**: What the item is
+- **Category**: Product category (Dairy, Bakery, etc.)
+- **SKU**: Stock Keeping Unit code
+- **Quantity**: Current stock level
+- **Expiry Date**: When the item expires
+- **Supplier**: Where it came from
+
+### Using Inventory Data for Tasks
+
+<AccordionGroup>
+  <Accordion title="Finding Items by SKU">
+    When a task mentions a SKU (e.g., "DA-001"), use the inventory search to locate the product details and physical location.
+  </Accordion>
+  
+  <Accordion title="Checking Expiry Dates">
+    View expiry dates to prioritize which items to process first during inspection tasks.
+  </Accordion>
+  
+  <Accordion title="Verifying Quantities">
+    Compare system quantities with physical counts during audit tasks.
+  </Accordion>
+  
+  <Accordion title="Category Filtering">
+    Use category filters to narrow down items when working on category-specific tasks.
+  </Accordion>
+</AccordionGroup>
+
+## Task Completion Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Start Tasks Promptly" icon="play">
+    Update status to "In Progress" as soon as you begin work so managers know you're on it.
+  </Card>
+  
+  <Card title="Complete What You Start" icon="flag-checkered">
+    Avoid leaving tasks in "In Progress" for extended periods. Finish before starting new ones.
+  </Card>
+  
+  <Card title="Ask When Unclear" icon="question">
+    If a task description is confusing, ask your manager for clarification before starting.
+  </Card>
+  
+  <Card title="Report Issues Immediately" icon="exclamation-triangle">
+    If you find problems during task execution, notify your manager right away.
+  </Card>
+</CardGroup>
+
+## Daily Work Routine
+
+### Shift Start Checklist
+
+<Steps>
+  <Step title="Login to SmartShelf">
+    Access your worker dashboard.
+  </Step>
+  
+  <Step title="Review Task Statistics">
+    Check your Pending and In Progress counts.
+  </Step>
+  
+  <Step title="Filter for Pending Tasks">
+    View all tasks waiting to be started.
+  </Step>
+  
+  <Step title="Prioritize Your Work">
+    Start with time-sensitive tasks (expiry checks, urgent restocking).
+  </Step>
+  
+  <Step title="Begin First Task">
+    Click "Start" on your priority task.
+  </Step>
+</Steps>
+
+### During Your Shift
+
+<Steps>
+  <Step title="Focus on In Progress Tasks">
+    Complete tasks you've started before beginning new ones.
+  </Step>
+  
+  <Step title="Update Status Regularly">
+    Mark tasks complete as soon as you finish them.
+  </Step>
+  
+  <Step title="Check for New Assignments">
+    Managers may assign new tasks during your shift - refresh your dashboard periodically.
+  </Step>
+  
+  <Step title="Communicate Issues">
+    Report any problems or blockers to your manager immediately.
+  </Step>
+</Steps>
+
+### Shift End Checklist
+
+<Steps>
+  <Step title="Complete In Progress Tasks">
+    Finish any tasks you've started, if possible.
+  </Step>
+  
+  <Step title="Update Task Status">
+    Ensure all completed work is marked as "Completed".
+  </Step>
+  
+  <Step title="Review Remaining Pending">
+    Check how many pending tasks remain for next shift.
+  </Step>
+  
+  <Step title="Report Outstanding Issues">
+    Inform manager of any incomplete work or problems encountered.
+  </Step>
+</Steps>
+
+## Tips for Efficiency
+
+<AccordionGroup>
+  <Accordion title="Batch Similar Tasks">
+    If you have multiple tasks in the same category or location, complete them together to save time.
+  </Accordion>
+  
+  <Accordion title="Use the Filter Feature">
+    Focus on "Pending" filter to see what needs attention, then switch to "In Progress" to track active work.
+  </Accordion>
+  
+  <Accordion title="Understand Task Descriptions">
+    Take a moment to fully read each task before starting. This prevents mistakes and rework.
+  </Accordion>
+  
+  <Accordion title="Keep Managers Updated">
+    If a task will take longer than expected, let your manager know so they can adjust priorities.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot Find Product Mentioned in Task">
+    **Solution:**
+    1. Check the inventory page using search or SKU filter
+    2. If not found in system, ask manager if product name/SKU is correct
+    3. Manager may need to add the item to inventory first
+  </Accordion>
+  
+  <Accordion title="Task Description Unclear">
+    **Solution:**
+    1. Do NOT guess - ask your manager for clarification
+    2. Do not start the task until you understand what's required
+    3. Managers prefer questions over incorrect work
+  </Accordion>
+  
+  <Accordion title="Accidentally Marked Task Complete">
+    **Solution:**
+    1. Inform your manager immediately
+    2. They can reset the task status if needed
+    3. Only you and managers can update task status
+  </Accordion>
+  
+  <Accordion title="No Tasks Showing">
+    **Solution:**
+    1. Check that you're on the "My Tasks" page (not "All Tasks")
+    2. Try removing filters (click "All" filter button)
+    3. If still empty, you have no assigned tasks - check with manager
+  </Accordion>
+  
+  <Accordion title="Dashboard Not Loading">
+    **Solution:**
+    1. Check your internet connection
+    2. Try refreshing the page (F5 or reload button)
+    3. If problem persists, contact your manager or IT support
+  </Accordion>
+</AccordionGroup>
+
+## Understanding Your Role
+
+<Note>
+As a worker, you are the eyes and hands on the warehouse floor. Your accurate task completion and timely reporting help managers maintain efficient operations and inventory accuracy.
+</Note>
+
+### Why Task Status Updates Matter
+
+- **"Pending"**: Tells managers the task hasn't been addressed yet
+- **"In Progress"**: Shows managers you're working on it, helps them track workflow
+- **"Completed"**: Confirms the work is done, allows managers to verify and close the task
+
+Accurate status updates help the entire team coordinate effectively.
+
+## Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Complete Tasks Promptly" icon="clock">
+    Aim to finish tasks within the same shift they're assigned when possible.
+  </Card>
+  
+  <Card title="Maintain Accuracy" icon="crosshairs">
+    Quality over speed - ensure tasks are done correctly the first time.
+  </Card>
+  
+  <Card title="Stay Organized" icon="list">
+    Use filters to manage your workload and prevent tasks from being forgotten.
+  </Card>
+  
+  <Card title="Communicate Proactively" icon="comments">
+    Keep managers informed of progress, issues, or delays.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Guide" icon="shield-halved" href="/guides/admin-guide">
+    Learn about administrator capabilities (for reference)
+  </Card>
+  
+  <Card title="Manager Guide" icon="users" href="/guides/manager-guide">
+    Understand how managers create and assign tasks
+  </Card>
+</CardGroup>

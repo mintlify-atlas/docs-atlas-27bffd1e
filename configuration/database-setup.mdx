@@ -1,0 +1,321 @@
+---
+title: Database Setup
+description: Guide to setting up and configuring MongoDB for SmartShelf inventory management system
+---
+
+SmartShelf uses MongoDB as its primary database for storing users, inventory items, and tasks. This guide covers both local and cloud-based MongoDB setup options.
+
+## MongoDB Setup Options
+
+You can set up MongoDB in two ways:
+
+1. **Local MongoDB** - Install and run MongoDB on your development machine
+2. **MongoDB Atlas** - Use MongoDB's cloud-hosted database service (recommended for production)
+
+## Local MongoDB Installation
+
+<Steps>
+  <Step title="Download MongoDB">
+    Download MongoDB Community Server from [MongoDB Download Center](https://www.mongodb.com/try/download/community).
+    
+    Select the version appropriate for your operating system:
+    - **Windows**: MSI installer
+    - **macOS**: DMG package or Homebrew
+    - **Linux**: Package manager (apt, yum) or tarball
+  </Step>
+  
+  <Step title="Install MongoDB">
+    Follow the installation wizard for your platform.
+    
+    **macOS with Homebrew:**
+    ```bash
+    brew tap mongodb/brew
+    brew install mongodb-community@7.0
+    ```
+    
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt-get install -y mongodb-org
+    ```
+    
+    **Windows:**
+    Run the MSI installer and follow the setup wizard.
+  </Step>
+  
+  <Step title="Start MongoDB service">
+    Start the MongoDB service on your system:
+    
+    **macOS:**
+    ```bash
+    brew services start mongodb-community@7.0
+    # Or manually:
+    mongod --config /usr/local/etc/mongod.conf
+    ```
+    
+    **Linux (systemd):**
+    ```bash
+    sudo systemctl start mongod
+    sudo systemctl enable mongod  # Start on boot
+    ```
+    
+    **Windows:**
+    ```bash
+    net start MongoDB
+    ```
+  </Step>
+  
+  <Step title="Verify installation">
+    Verify MongoDB is running:
+    ```bash
+    mongosh
+    ```
+    
+    You should see the MongoDB shell prompt. Type `exit` to quit.
+  </Step>
+  
+  <Step title="Configure connection string">
+    Update your backend `.env` file with the local connection string:
+    ```env
+    MONGODB_URI=mongodb://localhost:27017/smartshelf
+    ```
+  </Step>
+</Steps>
+
+## MongoDB Atlas Setup (Cloud)
+
+MongoDB Atlas is recommended for production deployments and offers a free tier for development.
+
+<Steps>
+  <Step title="Create MongoDB Atlas account">
+    Sign up for a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
+  </Step>
+  
+  <Step title="Create a new cluster">
+    1. Click **"Build a Database"** or **"Create"**
+    2. Select **"Shared"** for the free tier (M0)
+    3. Choose your cloud provider and region (select one closest to your users)
+    4. Name your cluster (e.g., `smartshelf-cluster`)
+    5. Click **"Create Cluster"** (this may take a few minutes)
+  </Step>
+  
+  <Step title="Configure database access">
+    1. Go to **Database Access** in the left sidebar
+    2. Click **"Add New Database User"**
+    3. Choose **"Password"** authentication
+    4. Enter a username and auto-generate a secure password
+    5. Save the credentials securely
+    6. Set privileges to **"Read and write to any database"**
+    7. Click **"Add User"**
+    
+    <Warning>
+      Save your database username and password securely. You'll need them for the connection string.
+    </Warning>
+  </Step>
+  
+  <Step title="Configure network access">
+    1. Go to **Network Access** in the left sidebar
+    2. Click **"Add IP Address"**
+    3. For development: Click **"Allow Access from Anywhere"** (0.0.0.0/0)
+    4. For production: Add specific IP addresses of your servers
+    5. Click **"Confirm"**
+    
+    <Note>
+      Allowing access from anywhere (0.0.0.0/0) is convenient for development but should be restricted in production.
+    </Note>
+  </Step>
+  
+  <Step title="Get connection string">
+    1. Go to **Database** in the left sidebar
+    2. Click **"Connect"** on your cluster
+    3. Select **"Connect your application"**
+    4. Choose **"Node.js"** as the driver and select the latest version
+    5. Copy the connection string
+    
+    The string will look like:
+    ```
+    mongodb+srv://username:password@cluster.mongodb.net/
+    ```
+  </Step>
+  
+  <Step title="Update environment variables">
+    Update your backend `.env` file with the Atlas connection string:
+    ```env
+    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smartshelf
+    ```
+    
+    Replace:
+    - `username` with your database username
+    - `password` with your database password
+    - Add `/smartshelf` at the end to specify the database name
+  </Step>
+</Steps>
+
+## Connection String Formats
+
+### Local MongoDB
+
+```
+mongodb://[host]:[port]/[database]
+```
+
+**Example:**
+```
+mongodb://localhost:27017/smartshelf
+```
+
+### MongoDB Atlas
+
+```
+mongodb+srv://[username]:[password]@[cluster]/[database]
+```
+
+**Example:**
+```
+mongodb+srv://admin:myPassword123@cluster0.abc123.mongodb.net/smartshelf
+```
+
+<Warning>
+  Special characters in passwords must be URL-encoded. For example, `@` becomes `%40`, `#` becomes `%23`.
+</Warning>
+
+## Database Initialization
+
+SmartShelf automatically creates collections and indexes when you first start the backend server. No manual database initialization is required.
+
+### Automatic Collection Creation
+
+When you start the backend, Mongoose will automatically:
+- Create the `smartshelf` database if it doesn't exist
+- Create collections when the first document is inserted
+- Build indexes defined in the models
+
+### Initial Data
+
+To create an initial admin user, you can use the registration endpoint or create one directly in the database:
+
+```javascript
+// Use the API registration endpoint
+POST /api/auth/register
+{
+  "name": "Admin User",
+  "email": "admin@smartshelf.com",
+  "password": "securePassword123",
+  "role": "Admin"
+}
+```
+
+## Collections Overview
+
+SmartShelf uses three main collections:
+
+### Users Collection
+
+Stores user accounts with role-based access control.
+
+**Schema fields:**
+- `name` (String, required) - User's full name
+- `email` (String, required, unique) - User's email address
+- `password` (String, required) - Hashed password using bcrypt
+- `role` (String, required) - One of: `Admin`, `Manager`, `Worker`
+- `isActive` (Boolean) - Account status
+- `createdAt`, `updatedAt` (Date) - Timestamps
+
+**Indexes:**
+- `email` - Unique index for fast lookups and authentication
+- `role` - Index for role-based queries
+
+### Inventory Collection
+
+Stores product inventory items with expiry tracking and stock management.
+
+**Schema fields:**
+- `productName` (String, required) - Name of the product
+- `category` (String, required, indexed) - Product category
+- `sku` (String, required, unique) - Stock Keeping Unit (format: `XX-000`)
+- `quantity` (Number, required) - Current stock quantity
+- `purchaseDate` (Date, required) - Date item was purchased
+- `expiryDate` (Date, required, indexed) - Product expiration date
+- `supplier` (String, required) - Supplier name
+- `createdBy` (ObjectId, ref: User) - User who created the record
+- `lastModifiedBy` (ObjectId, ref: User) - User who last modified
+- `createdAt`, `updatedAt` (Date) - Timestamps
+
+**Virtual fields:**
+- `daysUntilExpiry` - Calculated days remaining until expiry
+- `isExpired` - Boolean indicating if item is expired
+- `isLowStock` - Boolean for stock below threshold (10)
+- `stockStatus` - String: `Out of Stock`, `Low Stock`, `Medium Stock`, `In Stock`
+
+**Indexes:**
+- `sku` - Unique index
+- `category` - For category-based filtering
+- `expiryDate` - For FEFO ordering and expiry alerts
+- `quantity` - For stock level queries
+- `category + expiryDate` - Compound index for optimized queries
+
+### Tasks Collection
+
+Stores work assignments for warehouse workers.
+
+**Schema fields:**
+- `description` (String, required) - Task description
+- `assignedTo` (ObjectId, ref: User, required) - Worker assigned to task
+- `assignedBy` (ObjectId, ref: User, required) - Manager/Admin who created task
+- `status` (String) - One of: `Pending`, `In Progress`, `Completed`
+- `completedAt` (Date) - Completion timestamp
+- `createdAt`, `updatedAt` (Date) - Timestamps
+
+**Virtual fields:**
+- `duration` - Time between creation and completion
+- `isOverdue` - Boolean for tasks pending > 48 hours
+
+**Indexes:**
+- `assignedTo` - For worker-specific task queries
+- `status` - For filtering by task status
+- `createdAt` - For chronological ordering
+- `assignedTo + status` - Compound index for optimized queries
+
+## Database Management Tools
+
+### MongoDB Compass
+
+MongoDB Compass is a GUI tool for visualizing and managing your database:
+
+1. Download from [MongoDB Compass](https://www.mongodb.com/try/download/compass)
+2. Install and launch the application
+3. Connect using your connection string
+4. Browse collections, run queries, and view data visually
+
+### MongoDB Shell (mongosh)
+
+Command-line interface for database operations:
+
+```bash
+# Connect to local MongoDB
+mongosh mongodb://localhost:27017/smartshelf
+
+# Connect to MongoDB Atlas
+mongosh "mongodb+srv://cluster.mongodb.net/smartshelf" --username yourUsername
+
+# Common commands
+show collections           # List all collections
+db.users.find()           # Query users collection
+db.inventory.countDocuments()  # Count inventory items
+```
+
+## Production Considerations
+
+<Warning>
+  For production deployments, ensure you implement proper security measures.
+</Warning>
+
+1. **Enable authentication** - Always use username/password authentication
+2. **Restrict network access** - Whitelist specific IP addresses only
+3. **Use SSL/TLS** - Enable encrypted connections (MongoDB Atlas uses this by default)
+4. **Regular backups** - Set up automated backups (Atlas provides automated backups)
+5. **Monitor performance** - Use MongoDB Atlas monitoring or third-party tools
+6. **Index optimization** - Review and optimize indexes based on query patterns
+
+<Note>
+  See the [Deployment Guide](/configuration/deployment) for more production setup recommendations.
+</Note>

@@ -1,0 +1,408 @@
+---
+title: 'User Management'
+description: 'Manage user accounts, roles, and permissions (Admin only)'
+---
+
+## Overview
+
+The User Management API provides endpoints for administrators to manage user accounts, assign roles, and control access. Most endpoints require Admin role, with some accessible to Managers.
+
+---
+
+## Get All Users
+
+<api method="GET" endpoint="/api/users" />
+
+Retrieve all users with pagination and filtering.
+
+**Access:** Private (Admin only)
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="number" default="10">
+  Number of users per page
+</ParamField>
+
+<ParamField query="role" type="string">
+  Filter by role: `Admin`, `Manager`, or `Worker`
+</ParamField>
+
+<ParamField query="isActive" type="boolean">
+  Filter by active status (`true` or `false`)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search by name or email
+</ParamField>
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Users fetched successfully",
+  "data": {
+    "users": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "role": "Worker",
+        "isActive": true,
+        "createdAt": "2024-01-10T10:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalUsers": 25,
+      "limit": 10
+    }
+  }
+}
+```
+
+---
+
+## Get User by ID
+
+<api method="GET" endpoint="/api/users/:id" />
+
+Get a single user by ID.
+
+**Access:** Private (Admin only)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "User fetched successfully",
+  "data": {
+    "user": {
+      "_id": "65a1234567890abcdef12345",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Worker",
+      "isActive": true,
+      "createdAt": "2024-01-10T10:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+## Create User
+
+<api method="POST" endpoint="/api/users" />
+
+Create a new user account.
+
+**Access:** Private (Admin only)
+
+### Request Body
+
+<ParamField path="name" type="string" required>
+  User's full name
+</ParamField>
+
+<ParamField path="email" type="string" required>
+  User's email address (must be unique)
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  User's password
+</ParamField>
+
+<ParamField path="role" type="string" required>
+  User role: `Admin`, `Manager`, or `Worker`
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "password": "securepass123",
+  "role": "Manager"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "User created successfully",
+  "data": {
+    "user": {
+      "_id": "65a9876543210fedcba98765",
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "role": "Manager",
+      "isActive": true
+    }
+  }
+}
+```
+
+---
+
+## Update User
+
+<api method="PUT" endpoint="/api/users/:id" />
+
+Update a user's information.
+
+**Access:** Private (Admin only)
+
+### Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField path="name" type="string">
+  Updated name
+</ParamField>
+
+<ParamField path="email" type="string">
+  Updated email (must be unique)
+</ParamField>
+
+<ParamField path="role" type="string">
+  Updated role: `Admin`, `Manager`, or `Worker`
+</ParamField>
+
+<ParamField path="isActive" type="boolean">
+  Account status (true = active, false = deactivated)
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "name": "Jane Smith-Johnson",
+  "role": "Admin",
+  "isActive": true
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "User updated successfully",
+  "data": {
+    "user": {
+      "_id": "65a9876543210fedcba98765",
+      "name": "Jane Smith-Johnson",
+      "email": "jane@example.com",
+      "role": "Admin",
+      "isActive": true
+    }
+  }
+}
+```
+
+<Note>
+  Deactivated users (isActive: false) cannot log in to the system.
+</Note>
+
+---
+
+## Delete User
+
+<api method="DELETE" endpoint="/api/users/:id" />
+
+Delete a user account.
+
+**Access:** Private (Admin only)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "User deleted successfully",
+  "data": null
+}
+```
+
+<Warning>
+  Admins cannot delete their own account. This prevents accidental lockout.
+</Warning>
+
+---
+
+## Get Workers
+
+<api method="GET" endpoint="/api/users/workers" />
+
+Get all active workers (for task assignment).
+
+**Access:** Private (Manager/Admin only)
+
+### Response
+
+<ResponseField name="workers" type="array">
+  Array of active workers
+  <ResponseField name="_id" type="string">
+    Worker ID
+  </ResponseField>
+  <ResponseField name="name" type="string">
+    Worker name
+  </ResponseField>
+  <ResponseField name="email" type="string">
+    Worker email
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of active workers
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Workers fetched successfully",
+  "data": {
+    "workers": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      {
+        "_id": "65a9876543210fedcba98765",
+        "name": "Alice Johnson",
+        "email": "alice@example.com"
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+<Info>
+  This endpoint only returns users with the "Worker" role who have isActive set to true. It's commonly used to populate task assignment dropdowns.
+</Info>
+
+---
+
+## Get User Statistics
+
+<api method="GET" endpoint="/api/users/stats" />
+
+Get user statistics for admin dashboard.
+
+**Access:** Private (Admin only)
+
+### Response
+
+<ResponseField name="stats" type="object">
+  <ResponseField name="totalUsers" type="number">
+    Total number of users
+  </ResponseField>
+  <ResponseField name="activeUsers" type="number">
+    Number of active users
+  </ResponseField>
+  <ResponseField name="inactiveUsers" type="number">
+    Number of inactive users
+  </ResponseField>
+  <ResponseField name="byRole" type="object">
+    User count by role
+    <ResponseField name="Admin" type="number">
+      Number of admins
+    </ResponseField>
+    <ResponseField name="Manager" type="number">
+      Number of managers
+    </ResponseField>
+    <ResponseField name="Worker" type="number">
+      Number of workers
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "User statistics fetched successfully",
+  "data": {
+    "stats": {
+      "totalUsers": 25,
+      "activeUsers": 22,
+      "inactiveUsers": 3,
+      "byRole": {
+        "Admin": 2,
+        "Manager": 5,
+        "Worker": 18
+      }
+    }
+  }
+}
+```
+
+---
+
+## User Roles
+
+| Role | Description | Capabilities |
+|------|-------------|-------------|
+| **Admin** | Full system access | All operations including user management |
+| **Manager** | Operational management | Inventory management, task management, analytics, view workers |
+| **Worker** | Task execution | View own tasks, update task status, view inventory |
+
+---
+
+## Role-Based Access
+
+| Endpoint | Worker | Manager | Admin |
+|----------|--------|---------|-------|
+| GET /users | ❌ | ❌ | ✅ |
+| GET /users/:id | ❌ | ❌ | ✅ |
+| POST /users | ❌ | ❌ | ✅ |
+| PUT /users/:id | ❌ | ❌ | ✅ |
+| DELETE /users/:id | ❌ | ❌ | ✅ |
+| GET /users/workers | ❌ | ✅ | ✅ |
+| GET /users/stats | ❌ | ❌ | ✅ |
+
+---
+
+## Error Responses
+
+### 400 Bad Request
+
+```json
+{
+  "success": false,
+  "message": "Please provide all required fields"
+}
+```
+
+### 403 Forbidden
+
+```json
+{
+  "success": false,
+  "message": "You cannot delete your own account"
+}
+```
+
+### 404 Not Found
+
+```json
+{
+  "success": false,
+  "message": "User not found"
+}
+```

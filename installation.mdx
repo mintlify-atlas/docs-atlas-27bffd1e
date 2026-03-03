@@ -1,0 +1,441 @@
+---
+title: Installation
+description: Detailed installation and configuration guide for SmartShelf
+---
+
+# Installation guide
+
+This guide provides comprehensive instructions for installing and configuring SmartShelf in development and production environments.
+
+## System requirements
+
+### Minimum requirements
+
+- **Node.js**: Version 18.0.0 or higher
+- **MongoDB**: Version 6.0 or higher
+- **RAM**: 4GB minimum (8GB recommended)
+- **Storage**: 500MB for application files, additional space for database
+- **Operating System**: Windows 10+, macOS 10.15+, or Linux (Ubuntu 20.04+)
+
+### Development tools
+
+- **Git**: For version control
+- **npm** or **yarn**: Package manager (npm comes with Node.js)
+- **Code editor**: VS Code, WebStorm, or similar
+- **MongoDB Compass**: (Optional) GUI for database management
+- **Postman**: (Optional) For API testing
+
+<Info>
+  For production deployments, consider using PM2 for process management and NGINX as a reverse proxy.
+</Info>
+
+## MongoDB setup
+
+You can use either a local MongoDB installation or MongoDB Atlas (cloud-hosted).
+
+### Option 1: Local MongoDB installation
+
+<Steps>
+  <Step title="Download MongoDB">
+    Download MongoDB Community Server from [mongodb.com/try/download/community](https://www.mongodb.com/try/download/community)
+  </Step>
+  
+  <Step title="Install MongoDB">
+    Follow the installation wizard for your operating system:
+    
+    <CodeGroup>
+      ```bash Windows
+      # Run the .msi installer
+      # Choose "Complete" installation
+      # Install MongoDB as a Service
+      ```
+      
+      ```bash macOS
+      # Using Homebrew
+      brew tap mongodb/brew
+      brew install mongodb-community@7.0
+      ```
+      
+      ```bash Ubuntu/Debian
+      # Import MongoDB public GPG key
+      wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+      
+      # Create list file
+      echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+      
+      # Update and install
+      sudo apt-get update
+      sudo apt-get install -y mongodb-org
+      ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Start MongoDB service">
+    <CodeGroup>
+      ```bash Windows
+      net start MongoDB
+      ```
+      
+      ```bash macOS
+      brew services start mongodb-community@7.0
+      ```
+      
+      ```bash Linux
+      sudo systemctl start mongod
+      sudo systemctl enable mongod  # Enable auto-start on boot
+      ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    mongosh
+    # Should connect to MongoDB shell
+    # Type 'exit' to quit
+    ```
+  </Step>
+</Steps>
+
+### Option 2: MongoDB Atlas (cloud)
+
+<Steps>
+  <Step title="Create Atlas account">
+    Sign up for a free account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+  </Step>
+  
+  <Step title="Create a cluster">
+    - Click "Build a Cluster"
+    - Choose the free tier (M0)
+    - Select your preferred cloud provider and region
+    - Click "Create Cluster"
+  </Step>
+  
+  <Step title="Create database user">
+    - Navigate to "Database Access"
+    - Click "Add New Database User"
+    - Choose "Password" authentication
+    - Set username and password
+    - Grant "Read and write to any database" privilege
+  </Step>
+  
+  <Step title="Whitelist IP address">
+    - Navigate to "Network Access"
+    - Click "Add IP Address"
+    - For development, click "Allow Access from Anywhere" (0.0.0.0/0)
+    - For production, add your specific IP addresses
+  </Step>
+  
+  <Step title="Get connection string">
+    - Click "Connect" on your cluster
+    - Choose "Connect your application"
+    - Copy the connection string
+    - Replace `<password>` with your database user password
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit your MongoDB Atlas connection string with credentials to version control. Always use environment variables.
+</Warning>
+
+## Backend installation
+
+<Steps>
+  <Step title="Navigate to backend directory">
+    ```bash
+    cd SmartShelf/backend
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+    
+    This will install the following key dependencies:
+    
+    - `express@^4.18.2` - Web framework
+    - `mongoose@^8.0.0` - MongoDB ODM
+    - `bcryptjs@^2.4.3` - Password hashing
+    - `jsonwebtoken@^9.0.2` - JWT authentication
+    - `dotenv@^16.3.1` - Environment variable management
+    - `cors@^2.8.5` - Cross-origin resource sharing
+    - `helmet@^7.1.0` - Security headers
+    - `express-validator@^7.0.1` - Input validation
+    - `express-rate-limit@^7.1.5` - Rate limiting
+    - `cookie-parser@^1.4.6` - Cookie parsing
+  </Step>
+  
+  <Step title="Create environment file">
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  
+  <Step title="Configure environment variables">
+    Edit the `.env` file with your configuration:
+    
+    ```env
+    # Server Configuration
+    NODE_ENV=development
+    PORT=5000
+    
+    # Database Configuration
+    # For local MongoDB:
+    MONGODB_URI=mongodb://localhost:27017/smartshelf
+    
+    # For MongoDB Atlas:
+    # MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smartshelf?retryWrites=true&w=majority
+    
+    # JWT Configuration
+    JWT_SECRET=your_super_secret_jwt_key_change_this_in_production_minimum_32_characters
+    JWT_EXPIRE=7d
+    JWT_COOKIE_EXPIRE=7
+    
+    # CORS Configuration
+    CLIENT_URL=http://localhost:5173
+    
+    # Alert Thresholds (optional)
+    LOW_STOCK_THRESHOLD=10
+    EXPIRY_ALERT_DAYS=7
+    
+    # Rate Limiting (optional)
+    RATE_LIMIT_WINDOW_MS=900000
+    RATE_LIMIT_MAX_REQUESTS=100
+    ```
+    
+    <Note>
+      **JWT_SECRET**: Generate a strong secret using `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+    </Note>
+  </Step>
+  
+  <Step title="Start the backend server">
+    For development:
+    ```bash
+    npm run dev
+    ```
+    
+    For production:
+    ```bash
+    npm start
+    ```
+    
+    You should see:
+    ```
+    Server running on port 5000
+    MongoDB Connected: localhost
+    ```
+  </Step>
+</Steps>
+
+## Frontend installation
+
+<Steps>
+  <Step title="Navigate to frontend directory">
+    ```bash
+    cd SmartShelf/frontend
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+    
+    This will install:
+    
+    - `react@^19.1.1` - UI library
+    - `react-dom@^19.1.1` - React DOM rendering
+    - `typescript@~5.8.2` - Type safety
+    - `vite@^6.2.0` - Build tool
+    - `@vitejs/plugin-react@^5.0.0` - React plugin for Vite
+    - Tailwind CSS (configured in the project)
+  </Step>
+  
+  <Step title="Create environment file">
+    ```bash
+    touch .env
+    ```
+  </Step>
+  
+  <Step title="Configure environment variables">
+    Edit the `.env` file:
+    
+    ```env
+    # API Configuration
+    VITE_API_URL=http://localhost:5000/api
+    
+    # For production, use your backend URL:
+    # VITE_API_URL=https://api.yourbackend.com/api
+    ```
+  </Step>
+  
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+    
+    The application will be available at `http://localhost:5173`
+  </Step>
+  
+  <Step title="Build for production">
+    When ready to deploy:
+    
+    ```bash
+    npm run build
+    ```
+    
+    This creates an optimized production build in the `dist` directory.
+  </Step>
+</Steps>
+
+## Verification steps
+
+Verify your installation is working correctly:
+
+<Steps>
+  <Step title="Check backend health">
+    Open your browser or use curl:
+    
+    ```bash
+    curl http://localhost:5000/api
+    ```
+    
+    You should receive a response from the API.
+  </Step>
+  
+  <Step title="Check frontend access">
+    Navigate to `http://localhost:5173` in your browser. You should see the SmartShelf login page.
+  </Step>
+  
+  <Step title="Test user registration">
+    - Click "Register"
+    - Fill in the registration form
+    - Submit and verify you're redirected to the dashboard
+  </Step>
+  
+  <Step title="Verify database connection">
+    Check the backend console output for "MongoDB Connected" message, or use MongoDB Compass to view the `smartshelf` database.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Backend issues
+
+<AccordionGroup>
+  <Accordion title="Port 5000 already in use">
+    Change the `PORT` variable in your backend `.env` file to a different port (e.g., 5001), and update the frontend `VITE_API_URL` accordingly.
+  </Accordion>
+  
+  <Accordion title="MongoDB connection failed">
+    **For local MongoDB:**
+    - Verify MongoDB service is running
+    - Check if MongoDB is listening on port 27017: `netstat -an | grep 27017`
+    - Try connecting with `mongosh` to verify MongoDB is accessible
+    
+    **For MongoDB Atlas:**
+    - Verify your IP address is whitelisted
+    - Check username and password in connection string
+    - Ensure special characters in password are URL-encoded
+  </Accordion>
+  
+  <Accordion title="JWT errors">
+    - Ensure `JWT_SECRET` is at least 32 characters long
+    - Clear browser cookies and try logging in again
+    - Verify the secret hasn't changed between backend restarts
+  </Accordion>
+  
+  <Accordion title="CORS errors">
+    - Verify `CLIENT_URL` in backend `.env` matches your frontend URL
+    - Check for typos in the URL (trailing slashes matter)
+    - Clear browser cache and reload
+  </Accordion>
+</AccordionGroup>
+
+### Frontend issues
+
+<AccordionGroup>
+  <Accordion title="API requests failing">
+    - Verify `VITE_API_URL` in `.env` is correct
+    - Check backend is running and accessible
+    - Open browser DevTools Network tab to see specific errors
+    - Ensure you're using `/api` suffix in the URL
+  </Accordion>
+  
+  <Accordion title="Build errors">
+    - Delete `node_modules` and run `npm install` again
+    - Clear Vite cache: `rm -rf node_modules/.vite`
+    - Check for TypeScript errors: `npm run build`
+  </Accordion>
+  
+  <Accordion title="Blank page or white screen">
+    - Check browser console for JavaScript errors
+    - Verify all environment variables are set
+    - Try clearing browser cache and cookies
+    - Ensure you're using a modern browser (Chrome, Firefox, Safari, Edge)
+  </Accordion>
+</AccordionGroup>
+
+### Database issues
+
+<AccordionGroup>
+  <Accordion title="MongoDB won't start">
+    **Windows:**
+    - Run services.msc and check MongoDB service status
+    - Try starting manually: `net start MongoDB`
+    
+    **macOS:**
+    - Check status: `brew services list`
+    - View logs: `tail -f /usr/local/var/log/mongodb/mongo.log`
+    
+    **Linux:**
+    - Check status: `sudo systemctl status mongod`
+    - View logs: `sudo journalctl -u mongod`
+  </Accordion>
+  
+  <Accordion title="Cannot connect to MongoDB Atlas">
+    - Verify cluster is running (not paused)
+    - Check Network Access IP whitelist
+    - Ensure database user has correct permissions
+    - Test connection string with MongoDB Compass
+  </Accordion>
+</AccordionGroup>
+
+## Production deployment
+
+For production deployment, consider:
+
+- Use PM2 for process management: `npm install -g pm2`
+- Set `NODE_ENV=production` in backend `.env`
+- Use a reverse proxy like NGINX
+- Enable HTTPS with SSL certificates
+- Use a proper MongoDB cluster with replica sets
+- Implement monitoring and logging (e.g., Winston, Morgan)
+- Set up automated backups for MongoDB
+- Use environment-specific configuration
+
+<Warning>
+  Never use development settings in production. Always set `NODE_ENV=production` and use strong, unique secrets.
+</Warning>
+
+## Next steps
+
+Now that SmartShelf is installed:
+
+<CardGroup cols={2}>
+  <Card title="User management" icon="users" href="/features/user-management">
+    Learn how to create and manage users
+  </Card>
+  
+  <Card title="Inventory management" icon="box" href="/features/inventory-management">
+    Start adding and tracking inventory items
+  </Card>
+  
+  <Card title="API reference" icon="code" href="/api/overview">
+    Explore the REST API endpoints
+  </Card>
+  
+  <Card title="Environment variables" icon="gear" href="/configuration/environment-variables">
+    Customize SmartShelf for your needs
+  </Card>
+</CardGroup>

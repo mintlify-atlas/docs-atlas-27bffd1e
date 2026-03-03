@@ -1,0 +1,388 @@
+---
+title: 'Inventory Management'
+description: 'Manage inventory items, track stock levels, and view analytics'
+---
+
+## Overview
+
+The Inventory API provides comprehensive endpoints for managing inventory items, including CRUD operations, quantity updates, and analytics. All endpoints require authentication.
+
+## Get All Inventory
+
+<api method="GET" endpoint="/api/inventory" />
+
+Retrieve all inventory items with pagination and filtering.
+
+**Access:** Private (all authenticated users)
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="number" default="10">
+  Number of items per page
+</ParamField>
+
+<ParamField query="category" type="string">
+  Filter by category (case-insensitive)
+</ParamField>
+
+<ParamField query="supplier" type="string">
+  Filter by supplier (case-insensitive)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search by product name or SKU
+</ParamField>
+
+<ParamField query="minQty" type="number">
+  Minimum quantity filter
+</ParamField>
+
+<ParamField query="maxQty" type="number">
+  Maximum quantity filter
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Field to sort by (e.g., quantity, expiryDate)
+</ParamField>
+
+<ParamField query="order" type="string">
+  Sort order: `asc` or `desc`
+</ParamField>
+
+### Response
+
+<ResponseField name="items" type="array">
+  Array of inventory items
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  <ResponseField name="currentPage" type="number">
+    Current page number
+  </ResponseField>
+  <ResponseField name="totalPages" type="number">
+    Total number of pages
+  </ResponseField>
+  <ResponseField name="totalItems" type="number">
+    Total number of items
+  </ResponseField>
+  <ResponseField name="limit" type="number">
+    Items per page
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Inventory items fetched successfully",
+  "data": {
+    "items": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Organic Apples",
+        "category": "Fruits",
+        "sku": "FRT-001",
+        "quantity": 150,
+        "purchaseDate": "2024-01-15T00:00:00.000Z",
+        "expiryDate": "2024-02-15T00:00:00.000Z",
+        "supplier": "Fresh Farms Ltd",
+        "createdBy": {
+          "_id": "65a9876543210fedcba98765",
+          "name": "Admin User",
+          "email": "admin@example.com"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalItems": 50,
+      "limit": 10
+    }
+  }
+}
+```
+
+---
+
+## Get Inventory Item
+
+<api method="GET" endpoint="/api/inventory/:id" />
+
+Get a single inventory item by ID.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Inventory item fetched successfully",
+  "data": {
+    "item": {
+      "_id": "65a1234567890abcdef12345",
+      "productName": "Organic Apples",
+      "category": "Fruits",
+      "sku": "FRT-001",
+      "quantity": 150,
+      "purchaseDate": "2024-01-15T00:00:00.000Z",
+      "expiryDate": "2024-02-15T00:00:00.000Z",
+      "supplier": "Fresh Farms Ltd"
+    }
+  }
+}
+```
+
+---
+
+## Create Inventory Item
+
+<api method="POST" endpoint="/api/inventory" />
+
+Create a new inventory item.
+
+**Access:** Private (Admin/Manager only)
+
+### Request Body
+
+<ParamField path="productName" type="string" required>
+  Name of the product
+</ParamField>
+
+<ParamField path="category" type="string" required>
+  Product category
+</ParamField>
+
+<ParamField path="sku" type="string" required>
+  Stock Keeping Unit (will be converted to uppercase)
+</ParamField>
+
+<ParamField path="quantity" type="number" required>
+  Initial quantity in stock
+</ParamField>
+
+<ParamField path="purchaseDate" type="string" required>
+  Purchase date (ISO 8601 format)
+</ParamField>
+
+<ParamField path="expiryDate" type="string" required>
+  Expiry date (must be after purchase date)
+</ParamField>
+
+<ParamField path="supplier" type="string" required>
+  Supplier name
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "productName": "Organic Apples",
+  "category": "Fruits",
+  "sku": "FRT-001",
+  "quantity": 150,
+  "purchaseDate": "2024-01-15",
+  "expiryDate": "2024-02-15",
+  "supplier": "Fresh Farms Ltd"
+}
+```
+
+---
+
+## Update Inventory Item
+
+<api method="PUT" endpoint="/api/inventory/:id" />
+
+Update an existing inventory item.
+
+**Access:** Private (Admin/Manager only)
+
+### Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField path="productName" type="string">
+  Updated product name
+</ParamField>
+
+<ParamField path="category" type="string">
+  Updated category
+</ParamField>
+
+<ParamField path="quantity" type="number">
+  Updated quantity
+</ParamField>
+
+<ParamField path="purchaseDate" type="string">
+  Updated purchase date
+</ParamField>
+
+<ParamField path="expiryDate" type="string">
+  Updated expiry date
+</ParamField>
+
+<ParamField path="supplier" type="string">
+  Updated supplier
+</ParamField>
+
+---
+
+## Update Quantity
+
+<api method="PATCH" endpoint="/api/inventory/:id/quantity" />
+
+Quickly update inventory quantity with add, subtract, or set operations.
+
+**Access:** Private (Admin/Manager only)
+
+### Request Body
+
+<ParamField path="quantity" type="number" required>
+  Quantity value
+</ParamField>
+
+<ParamField path="operation" type="string" required>
+  Operation type: `add`, `subtract`, or `set`
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "quantity": 50,
+  "operation": "add"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Inventory quantity updated successfully",
+  "data": {
+    "item": {
+      "_id": "65a1234567890abcdef12345",
+      "productName": "Organic Apples",
+      "quantity": 200,
+      "lastModifiedBy": {
+        "name": "Manager User",
+        "email": "manager@example.com"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Delete Inventory Item
+
+<api method="DELETE" endpoint="/api/inventory/:id" />
+
+Delete an inventory item.
+
+**Access:** Private (Admin/Manager only)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Inventory item deleted successfully",
+  "data": null
+}
+```
+
+---
+
+## Analytics Endpoints
+
+### Get Inventory by Category
+
+<api method="GET" endpoint="/api/inventory/analytics/by-category" />
+
+Get aggregated inventory data grouped by category.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Category analytics fetched successfully",
+  "data": {
+    "categories": [
+      {
+        "category": "Fruits",
+        "totalQuantity": 500,
+        "itemCount": 5,
+        "avgQuantity": 100
+      }
+    ]
+  }
+}
+```
+
+### Get Inventory by Supplier
+
+<api method="GET" endpoint="/api/inventory/analytics/by-supplier" />
+
+Get aggregated inventory data grouped by supplier.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Supplier analytics fetched successfully",
+  "data": {
+    "suppliers": [
+      {
+        "supplier": "Fresh Farms Ltd",
+        "totalQuantity": 750,
+        "itemCount": 8,
+        "categories": ["Fruits", "Vegetables"]
+      }
+    ]
+  }
+}
+```
+
+### Get Inventory Summary
+
+<api method="GET" endpoint="/api/inventory/analytics/summary" />
+
+Get dashboard summary statistics.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Inventory summary fetched successfully",
+  "data": {
+    "summary": {
+      "totalItems": 50,
+      "totalQuantity": 2500,
+      "categoriesCount": 8,
+      "suppliersCount": 12,
+      "lowStockCount": 5,
+      "outOfStockCount": 2,
+      "expiringSoonCount": 3,
+      "expiredCount": 1
+    }
+  }
+}
+```

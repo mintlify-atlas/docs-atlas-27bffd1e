@@ -1,0 +1,394 @@
+---
+title: 'Analytics'
+description: 'Advanced analytics including demand forecasting, FEFO ordering, and sales insights'
+---
+
+## Overview
+
+The Analytics API provides advanced business intelligence features including demand forecasting, FEFO (First Expired, First Out) ordering recommendations, top-selling products analysis, and notification alerts. All endpoints require authentication and Manager/Admin role.
+
+**Access:** All analytics endpoints require Private (Manager/Admin only) access.
+
+---
+
+## Demand Forecast
+
+<api method="GET" endpoint="/api/analytics/demand-forecast" />
+
+Get demand forecasting data for top products with 7-day projections.
+
+**Access:** Private (Manager/Admin only)
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="5">
+  Number of products to include in forecast
+</ParamField>
+
+### Response
+
+<ResponseField name="forecasts" type="array">
+  Array of product forecasts
+  <ResponseField name="product" type="object">
+    <ResponseField name="id" type="string">
+      Product ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="category" type="string">
+      Product category
+    </ResponseField>
+    <ResponseField name="sku" type="string">
+      Stock Keeping Unit
+    </ResponseField>
+    <ResponseField name="currentQuantity" type="number">
+      Current stock quantity
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="forecast" type="array">
+    7-day forecast array with daily projections
+    <ResponseField name="day" type="number">
+      Day number (1-7)
+    </ResponseField>
+    <ResponseField name="date" type="string">
+      Date in YYYY-MM-DD format
+    </ResponseField>
+    <ResponseField name="projectedQuantity" type="number">
+      Projected quantity for that day
+    </ResponseField>
+    <ResponseField name="trend" type="string">
+      Trend indicator: `stable`, `normal`, or `critical`
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="estimatedDailyConsumption" type="number">
+    Estimated daily consumption rate
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Demand forecast data fetched successfully",
+  "data": {
+    "forecasts": [
+      {
+        "product": {
+          "id": "65a1234567890abcdef12345",
+          "name": "Organic Apples",
+          "category": "Fruits",
+          "sku": "FRT-001",
+          "currentQuantity": 150
+        },
+        "forecast": [
+          {
+            "day": 1,
+            "date": "2024-01-16",
+            "projectedQuantity": 145,
+            "trend": "stable"
+          },
+          {
+            "day": 2,
+            "date": "2024-01-17",
+            "projectedQuantity": 140,
+            "trend": "stable"
+          },
+          {
+            "day": 7,
+            "date": "2024-01-22",
+            "projectedQuantity": 8,
+            "trend": "critical"
+          }
+        ],
+        "estimatedDailyConsumption": 5.2
+      }
+    ]
+  }
+}
+```
+
+<Info>
+  The forecast algorithm assumes steady consumption based on historical quantity changes. Critical trend is flagged when projected quantity falls below 10 units.
+</Info>
+
+---
+
+## FEFO Ordering
+
+<api method="GET" endpoint="/api/analytics/fefo-ordering" />
+
+Get First Expired, First Out (FEFO) ordering recommendations based on expiry dates.
+
+**Access:** Private (Manager/Admin only)
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="10">
+  Number of items to return
+</ParamField>
+
+### Response
+
+<ResponseField name="items" type="array">
+  Array of items sorted by expiry date (nearest first)
+  <ResponseField name="id" type="string">
+    Item ID
+  </ResponseField>
+  <ResponseField name="productName" type="string">
+    Product name
+  </ResponseField>
+  <ResponseField name="category" type="string">
+    Product category
+  </ResponseField>
+  <ResponseField name="sku" type="string">
+    Stock Keeping Unit
+  </ResponseField>
+  <ResponseField name="quantity" type="number">
+    Current quantity
+  </ResponseField>
+  <ResponseField name="expiryDate" type="string">
+    Expiry date
+  </ResponseField>
+  <ResponseField name="daysUntilExpiry" type="number">
+    Days until expiration
+  </ResponseField>
+  <ResponseField name="urgency" type="string">
+    Urgency level: `critical` (≤3 days), `high` (≤7 days), `medium` (≤14 days), or `low` (>14 days)
+  </ResponseField>
+  <ResponseField name="supplier" type="string">
+    Supplier name
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of items returned
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "FEFO ordering fetched successfully",
+  "data": {
+    "items": [
+      {
+        "id": "65a1234567890abcdef12345",
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "sku": "DRY-015",
+        "quantity": 25,
+        "expiryDate": "2024-01-18T00:00:00.000Z",
+        "daysUntilExpiry": 2,
+        "urgency": "critical",
+        "supplier": "Dairy Fresh Co"
+      },
+      {
+        "id": "65a9876543210fedcba98765",
+        "productName": "Greek Yogurt",
+        "category": "Dairy",
+        "sku": "DRY-022",
+        "quantity": 40,
+        "daysUntilExpiry": 5,
+        "urgency": "high",
+        "supplier": "Dairy Fresh Co"
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+<Note>
+  Only non-expired items with quantity > 0 are included in FEFO ordering.
+</Note>
+
+---
+
+## Top Selling Products
+
+<api method="GET" endpoint="/api/analytics/top-selling" />
+
+Get top-selling products based on sales velocity analysis.
+
+**Access:** Private (Manager/Admin only)
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="5">
+  Number of products to return
+</ParamField>
+
+### Response
+
+<ResponseField name="products" type="array">
+  Array of top-selling products
+  <ResponseField name="id" type="string">
+    Product ID
+  </ResponseField>
+  <ResponseField name="productName" type="string">
+    Product name
+  </ResponseField>
+  <ResponseField name="category" type="string">
+    Product category
+  </ResponseField>
+  <ResponseField name="sku" type="string">
+    Stock Keeping Unit
+  </ResponseField>
+  <ResponseField name="currentQuantity" type="number">
+    Current stock quantity
+  </ResponseField>
+  <ResponseField name="estimatedSold" type="number">
+    Estimated units sold
+  </ResponseField>
+  <ResponseField name="salesVelocity" type="number">
+    Sales velocity (units per day)
+  </ResponseField>
+  <ResponseField name="daysSincePurchase" type="number">
+    Days since initial purchase
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of products returned
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Top selling products fetched successfully",
+  "data": {
+    "products": [
+      {
+        "id": "65a1234567890abcdef12345",
+        "productName": "Organic Apples",
+        "category": "Fruits",
+        "sku": "FRT-001",
+        "currentQuantity": 150,
+        "estimatedSold": 75,
+        "salesVelocity": 5.4,
+        "daysSincePurchase": 14
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+<Info>
+  Sales velocity is calculated based on estimated consumption over time. Higher velocity indicates faster-moving products.
+</Info>
+
+---
+
+## Notification Alerts
+
+<api method="GET" endpoint="/api/analytics/notification-alerts" />
+
+Get comprehensive notification-style alerts for inventory issues.
+
+**Access:** Private (Manager/Admin only)
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="10">
+  Maximum number of alerts to return
+</ParamField>
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Array of alerts sorted by severity
+  <ResponseField name="id" type="string">
+    Item ID
+  </ResponseField>
+  <ResponseField name="type" type="string">
+    Alert type: `expired`, `expiring_soon`, `out_of_stock`, or `low_stock`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    Severity level: `critical`, `high`, `medium`, or `low`
+  </ResponseField>
+  <ResponseField name="productName" type="string">
+    Product name
+  </ResponseField>
+  <ResponseField name="category" type="string">
+    Product category
+  </ResponseField>
+  <ResponseField name="message" type="string">
+    Human-readable alert message
+  </ResponseField>
+  <ResponseField name="timestamp" type="string">
+    Alert timestamp
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Total number of alerts
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Notification alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "id": "65a1234567890abcdef12345",
+        "type": "expired",
+        "severity": "critical",
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "message": "Fresh Milk has expired 3 days ago",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "id": "65a9876543210fedcba98765",
+        "type": "expiring_soon",
+        "severity": "high",
+        "productName": "Greek Yogurt",
+        "category": "Dairy",
+        "message": "Greek Yogurt is expiring in 2 days",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "id": "65a5555555555555555555555",
+        "type": "out_of_stock",
+        "severity": "high",
+        "productName": "Bananas",
+        "category": "Fruits",
+        "message": "Bananas is out of stock",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "id": "65a6666666666666666666666",
+        "type": "low_stock",
+        "severity": "medium",
+        "productName": "Oranges",
+        "category": "Fruits",
+        "message": "Oranges is running low (7 units remaining)",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "count": 4
+  }
+}
+```
+
+### Alert Types
+
+| Type | Description | Severity |
+|------|-------------|----------|
+| `expired` | Product has passed expiry date | `critical` |
+| `expiring_soon` | Expires within 7 days | `high` (≤3 days), `medium` (4-7 days) |
+| `out_of_stock` | Quantity is 0 | `high` |
+| `low_stock` | Quantity less than 10 | `high` (below 5), `medium` (5-9) |
+
+<Warning>
+  Critical and high severity alerts require immediate attention to prevent product waste or stockouts.
+</Warning>

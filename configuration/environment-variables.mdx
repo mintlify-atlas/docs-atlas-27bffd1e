@@ -1,0 +1,185 @@
+---
+title: Environment Variables
+description: Complete guide to configuring environment variables for SmartShelf backend and frontend
+---
+
+SmartShelf uses environment variables to configure both backend and frontend components. This guide covers all required and optional configuration options.
+
+## Backend Environment Variables
+
+Create a `.env` file in the `backend` directory with the following variables:
+
+### Server Configuration
+
+<ParamField path="PORT" type="number" default="5000">
+  The port number on which the backend server will run.
+  
+  **Example:** `PORT=5000`
+</ParamField>
+
+<ParamField path="NODE_ENV" type="string" default="development">
+  The environment mode for the application. Use `development` for local development and `production` for production deployments.
+  
+  **Accepted values:** `development`, `production`, `test`
+  
+  **Example:** `NODE_ENV=development`
+</ParamField>
+
+### Database Configuration
+
+<ParamField path="MONGODB_URI" type="string" required>
+  The MongoDB connection string. Can be a local MongoDB instance or MongoDB Atlas cloud database.
+  
+  **Local example:** `MONGODB_URI=mongodb://localhost:27017/smartshelf`
+  
+  **Atlas example:** `MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smartshelf`
+  
+  <Warning>
+    Never commit your actual MongoDB URI to version control. Keep this value in `.env` and add `.env` to `.gitignore`.
+  </Warning>
+</ParamField>
+
+### JWT Configuration
+
+<ParamField path="JWT_SECRET" type="string" required>
+  Secret key used to sign and verify JSON Web Tokens for authentication.
+  
+  **Example:** `JWT_SECRET=your_super_secret_jwt_key_here_minimum_32_characters`
+  
+  <Warning>
+    **Security Critical:** Use a strong, random string with at least 32 characters. Never share or commit this value to version control.
+  </Warning>
+  
+  <Note>
+    Generate a secure random string using:
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    ```
+  </Note>
+</ParamField>
+
+<ParamField path="JWT_EXPIRE" type="string" default="24h">
+  The expiration time for JWT tokens. Uses time string format.
+  
+  **Examples:**
+  - `24h` - 24 hours
+  - `7d` - 7 days
+  - `60m` - 60 minutes
+  
+  **Example:** `JWT_EXPIRE=24h`
+</ParamField>
+
+### CORS Configuration
+
+<ParamField path="ALLOWED_ORIGINS" type="string" required>
+  Comma-separated list of allowed origins for CORS (Cross-Origin Resource Sharing). Include all URLs where your frontend will be hosted.
+  
+  **Example:** `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000`
+  
+  **Production example:** `ALLOWED_ORIGINS=https://smartshelf.example.com,https://www.smartshelf.example.com`
+</ParamField>
+
+### Backend .env Example
+
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/smartshelf
+
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_here_minimum_32_characters
+JWT_EXPIRE=24h
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+## Frontend Environment Variables
+
+Create a `.env` file in the `frontend` directory with the following variables:
+
+### API Configuration
+
+<ParamField path="VITE_API_URL" type="string" required>
+  The base URL for the backend API. Must point to your backend server's API endpoint.
+  
+  **Development example:** `VITE_API_URL=http://localhost:5000/api`
+  
+  **Production example:** `VITE_API_URL=https://api.smartshelf.example.com/api`
+  
+  <Note>
+    All environment variables in Vite must be prefixed with `VITE_` to be accessible in the application.
+  </Note>
+</ParamField>
+
+### Frontend .env Example
+
+```env
+# API Configuration
+VITE_API_URL=http://localhost:5000/api
+```
+
+## Security Best Practices
+
+<Warning>
+  **Never commit `.env` files to version control!** Always keep sensitive configuration data private.
+</Warning>
+
+<Steps>
+  <Step title="Add .env to .gitignore">
+    Ensure `.env` is listed in your `.gitignore` file:
+    ```
+    .env
+    .env.local
+    .env.production
+    ```
+  </Step>
+  
+  <Step title="Use .env.example templates">
+    Create `.env.example` files with dummy values as templates:
+    ```env
+    # .env.example
+    PORT=5000
+    MONGODB_URI=mongodb://localhost:27017/smartshelf
+    JWT_SECRET=change_this_to_a_secure_random_string
+    JWT_EXPIRE=24h
+    ALLOWED_ORIGINS=http://localhost:5173
+    ```
+  </Step>
+  
+  <Step title="Rotate secrets regularly">
+    Periodically update your `JWT_SECRET` and other sensitive values, especially if there's any possibility of compromise.
+  </Step>
+  
+  <Step title="Use environment-specific files">
+    Consider using different environment files for development, staging, and production:
+    - `.env.development`
+    - `.env.staging`
+    - `.env.production`
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Changes not taking effect
+
+If you modify environment variables and changes aren't reflected:
+
+1. **Restart the development server** - Environment variables are loaded at startup
+2. **Clear build cache** - For Vite, delete the `node_modules/.vite` cache directory
+3. **Verify file location** - Ensure `.env` is in the correct directory (backend or frontend root)
+
+### Connection errors
+
+If you're experiencing connection issues:
+
+- **Backend**: Verify `MONGODB_URI` is correct and MongoDB is running
+- **Frontend**: Ensure `VITE_API_URL` matches your backend server URL and port
+- **CORS errors**: Add all frontend URLs to `ALLOWED_ORIGINS`
+
+<Note>
+  Need help with deployment? See the [Deployment Guide](/configuration/deployment) for production configuration best practices.
+</Note>

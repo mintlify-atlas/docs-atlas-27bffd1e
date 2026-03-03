@@ -1,0 +1,394 @@
+---
+title: FEFO Ordering System
+description: First Expired, First Out algorithm for automatic inventory prioritization based on expiry dates
+---
+
+## Overview
+
+The FEFO (First Expired, First Out) ordering system automatically prioritizes inventory items based on their expiration dates, ensuring products are used or sold before they expire. This intelligent system reduces waste, maintains product quality, and optimizes warehouse operations.
+
+<Note>
+  FEFO prioritizes items by expiration date, unlike FIFO which prioritizes by purchase date. This is critical for perishable goods management.
+</Note>
+
+## FEFO Algorithm
+
+The system implements a sophisticated expiry-based prioritization algorithm (analyticsController.js:69-115):
+
+### Core Implementation
+
+```javascript
+exports.getFEFOOrdering = async (req, res) => {
+  const today = new Date();
+  
+  // Get products sorted by expiry date (nearest first)
+  const products = await Inventory.find({
+    expiryDate: { $gte: today },     // Only non-expired items
+    quantity: { $gt: 0 }              // Only items in stock
+  })
+  .sort({ expiryDate: 1 })            // Ascending order (nearest first)
+  .limit(limit);
+  
+  const fefoData = products.map(product => {
+    const daysUntilExpiry = Math.ceil(
+      (new Date(product.expiryDate) - today) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Calculate urgency level
+    let urgency = 'low';
+    if (daysUntilExpiry <= 3) urgency = 'critical';
+    else if (daysUntilExpiry <= 7) urgency = 'high';
+    else if (daysUntilExpiry <= 14) urgency = 'medium';
+    
+    return { ...product, daysUntilExpiry, urgency };
+  });
+};
+```
+
+### Filtering Logic
+
+The FEFO system only includes items that meet specific criteria:
+
+<Steps>
+  <Step title="Active Items Only">
+    Items must have an expiry date in the future (`expiryDate >= today`)
+  </Step>
+  <Step title="In Stock">
+    Items must have quantity greater than 0
+  </Step>
+  <Step title="Sorted by Expiry">
+    Results are sorted by expiry date in ascending order (nearest first)
+  </Step>
+  <Step title="Urgency Classification">
+    Each item is assigned an urgency level based on days until expiry
+  </Step>
+</Steps>
+
+## Urgency Levels
+
+The system classifies items into four urgency categories:
+
+<CardGroup cols={2}>
+  <Card title="Critical" icon="circle-exclamation" color="#dc2626">
+    **≤ 3 days until expiry**
+    
+    Immediate action required. These items should be:
+    - Moved to front of warehouse
+    - Marked for immediate sale
+    - Discounted if necessary
+    - Used in production first
+  </Card>
+  
+  <Card title="High" icon="triangle-exclamation" color="#ea580c">
+    **≤ 7 days until expiry**
+    
+    High priority attention needed:
+    - Monitor daily
+    - Promote for sale
+    - Consider bundle offers
+    - Alert sales team
+  </Card>
+  
+  <Card title="Medium" icon="circle-exclamation" color="#ca8a04">
+    **≤ 14 days until expiry**
+    
+    Moderate attention required:
+    - Weekly monitoring
+    - Normal sales priority
+    - Track consumption rate
+    - Plan promotions if needed
+  </Card>
+  
+  <Card title="Low" icon="circle-info" color="#2563eb">
+    **> 14 days until expiry**
+    
+    Standard handling:
+    - Regular rotation
+    - Normal stock flow
+    - Routine monitoring
+    - Follow FEFO sequence
+  </Card>
+</CardGroup>
+
+### Urgency Calculation
+
+```javascript
+const daysUntilExpiry = Math.ceil(
+  (new Date(product.expiryDate) - today) / (1000 * 60 * 60 * 24)
+);
+
+let urgency = 'low';
+if (daysUntilExpiry <= 3) urgency = 'critical';      // Red alert
+else if (daysUntilExpiry <= 7) urgency = 'high';     // Orange alert
+else if (daysUntilExpiry <= 14) urgency = 'medium';  // Yellow alert
+// else urgency remains 'low'                         // Blue info
+```
+
+## Visual Indicators
+
+The Manager Dashboard displays FEFO ordering with clear visual indicators (ManagerDashboard.tsx:717-755):
+
+### Priority Ranking
+
+Each item is numbered based on FEFO priority:
+
+```typescript
+<div className="flex items-center gap-2">
+  <span className="text-lg font-bold text-slate-700">
+    #{index + 1}
+  </span>
+  <h3 className="font-semibold">{item.productName}</h3>
+</div>
+```
+
+### Urgency Badges
+
+Color-coded badges indicate urgency level:
+
+```typescript
+const getUrgencyColor = (urgency: string) => {
+  switch (urgency) {
+    case 'critical':
+      return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+    case 'high':
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300';
+    default:
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+  }
+};
+
+<span className={`px-2 py-1 text-xs font-semibold rounded-full ${getUrgencyColor(item.urgency)}`}>
+  {item.daysUntilExpiry}d left
+</span>
+```
+
+### Item Display Card
+
+Each FEFO item is displayed in a comprehensive card:
+
+```typescript
+<div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+  <div className="flex items-start justify-between mb-2">
+    <div className="flex-1">
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-bold">#1</span>
+        <h3 className="font-semibold">Fresh Milk</h3>
+      </div>
+      <p className="text-sm text-slate-500">
+        Dairy • SKU: DA-001
+      </p>
+    </div>
+    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full">
+      2d left
+    </span>
+  </div>
+  <div className="flex items-center justify-between text-sm">
+    <span>Qty: <strong>25</strong></span>
+    <span>Local Dairy Farm</span>
+  </div>
+</div>
+```
+
+## API Endpoint
+
+### Get FEFO Ordering
+
+```javascript
+GET /api/analytics/fefo-ordering?limit=10
+```
+
+**Query Parameters:**
+- `limit` (optional) - Maximum number of items to return (default: 10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "FEFO ordering fetched successfully",
+  "data": {
+    "items": [
+      {
+        "id": "673ab12c5f8e9a001234abcd",
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "sku": "DA-001",
+        "quantity": 25,
+        "expiryDate": "2025-11-17T00:00:00.000Z",
+        "daysUntilExpiry": 2,
+        "urgency": "critical",
+        "supplier": "Local Dairy Farm"
+      },
+      {
+        "id": "673ab12c5f8e9a001234abce",
+        "productName": "Greek Yogurt",
+        "category": "Dairy",
+        "sku": "DA-003",
+        "quantity": 15,
+        "expiryDate": "2025-11-18T00:00:00.000Z",
+        "daysUntilExpiry": 3,
+        "urgency": "critical",
+        "supplier": "Dairy Co."
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Warehouse Operations">
+    **Pick Order Optimization**
+    - Workers follow FEFO order for picking items
+    - Reduces waste from expired products
+    - Improves inventory turnover rate
+    
+    **Storage Management**
+    - Place near-expiry items in accessible locations
+    - Organize shelves by expiry priority
+    - Reduce search time for workers
+  </Accordion>
+  
+  <Accordion title="Sales & Marketing">
+    **Promotional Planning**
+    - Target promotions for high-urgency items
+    - Create bundle deals with near-expiry products
+    - Schedule flash sales for critical items
+    
+    **Discount Strategy**
+    - Automatic discount suggestions based on urgency
+    - Tiered pricing by days until expiry
+    - Clear-out campaigns for critical stock
+  </Accordion>
+  
+  <Accordion title="Quality Control">
+    **Freshness Guarantee**
+    - Ensure customers receive freshest available stock
+    - Maintain brand reputation for quality
+    - Reduce customer complaints
+    
+    **Compliance**
+    - Meet food safety regulations
+    - Maintain audit trail for expiry management
+    - Document proper rotation procedures
+  </Accordion>
+  
+  <Accordion title="Financial Management">
+    **Waste Reduction**
+    - Minimize losses from expired inventory
+    - Improve profit margins
+    - Better cash flow management
+    
+    **Inventory Valuation**
+    - More accurate stock valuation
+    - Identify potential write-offs early
+    - Optimize purchasing decisions
+  </Accordion>
+</AccordionGroup>
+
+## Integration with Other Features
+
+### Alert System
+
+FEFO integrates with the alert system to notify relevant personnel:
+
+```javascript
+// Critical items trigger immediate alerts
+if (daysUntilExpiry <= 3) {
+  // Send critical alert
+  createAlert({
+    type: 'expiring_critical',
+    severity: 'CRITICAL',
+    productId: product.id,
+    message: `${product.productName} expires in ${daysUntilExpiry} days`
+  });
+}
+```
+
+### Task Management
+
+Automatic task creation for near-expiry items:
+
+```javascript
+// Create task for critical items
+if (urgency === 'critical') {
+  createTask({
+    description: `Urgent: Process ${productName} - expires in ${daysUntilExpiry} days`,
+    assignedTo: warehouseManagerId,
+    priority: 'HIGH'
+  });
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Daily Review">
+    Check FEFO ordering every morning to identify critical items
+  </Step>
+  <Step title="Physical Arrangement">
+    Arrange warehouse shelves to match FEFO priority
+  </Step>
+  <Step title="Staff Training">
+    Train workers to always follow FEFO sequence
+  </Step>
+  <Step title="Regular Audits">
+    Verify FEFO compliance through periodic audits
+  </Step>
+  <Step title="Automated Actions">
+    Set up automatic alerts and tasks for critical items
+  </Step>
+</Steps>
+
+<Warning>
+  Never override FEFO ordering unless there's a valid quality or safety reason. Document all exceptions.
+</Warning>
+
+## Performance Metrics
+
+Track these KPIs to measure FEFO effectiveness:
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Waste Rate | < 2% | (Expired units / Total units) × 100 |
+| FEFO Compliance | > 95% | (FEFO picks / Total picks) × 100 |
+| Average Days to Expiry | > 7 days | Average across all sold items |
+| Critical Items | < 5 | Items with ≤3 days until expiry |
+
+## Limitations
+
+Be aware of these constraints:
+
+<AccordionGroup>
+  <Accordion title="Quality Variations">
+    FEFO doesn't account for quality differences between batches. Some newer batches may be higher quality than older ones.
+  </Accordion>
+  
+  <Accordion title="Demand Fluctuations">
+    Sudden demand spikes may require deviating from strict FEFO order.
+  </Accordion>
+  
+  <Accordion title="Mixed Lots">
+    Items from different suppliers with same expiry date need additional sorting logic.
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Alert System" icon="bell" href="/features/alert-system">
+    Expiry-based notifications
+  </Card>
+  <Card title="Demand Forecasting" icon="chart-line" href="/features/demand-forecasting">
+    Predict consumption rates
+  </Card>
+  <Card title="Inventory Management" icon="boxes" href="/features/inventory-management">
+    Manage expiry dates
+  </Card>
+  <Card title="Task Management" icon="list-check" href="/features/task-management">
+    Assign expiry-related tasks
+  </Card>
+</CardGroup>

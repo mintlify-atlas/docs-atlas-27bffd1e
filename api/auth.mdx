@@ -1,0 +1,341 @@
+---
+title: 'Authentication'
+description: 'Manage user authentication including registration, login, and profile management'
+---
+
+## Overview
+
+The Authentication API provides endpoints for user registration, login, logout, and profile management. Most endpoints require JWT authentication via cookies or Authorization header.
+
+## Register User
+
+<api method="POST" endpoint="/api/auth/register" />
+
+Create a new user account.
+
+**Access:** Public
+
+### Request Body
+
+<ParamField path="name" type="string" required>
+  User's full name
+</ParamField>
+
+<ParamField path="email" type="string" required>
+  User's email address (will be converted to lowercase)
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  User's password (minimum 6 characters)
+</ParamField>
+
+<ParamField path="role" type="string">
+  User role: `Admin`, `Manager`, or `Worker` (defaults to `Worker`)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <ResponseField name="user" type="object">
+    <ResponseField name="_id" type="string">
+      User ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      User's name
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      User's email
+    </ResponseField>
+    <ResponseField name="role" type="string">
+      User's role
+    </ResponseField>
+    <ResponseField name="isActive" type="boolean">
+      Account status
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="token" type="string">
+    JWT authentication token
+  </ResponseField>
+</ResponseField>
+
+### Example Request
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securepass123",
+  "role": "Worker"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "65a1234567890abcdef12345",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Worker",
+      "isActive": true
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+---
+
+## Login User
+
+<api method="POST" endpoint="/api/auth/login" />
+
+Authenticate and login a user.
+
+**Access:** Public
+
+### Request Body
+
+<ParamField path="email" type="string" required>
+  User's email address
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  User's password
+</ParamField>
+
+### Response
+
+Same structure as register endpoint.
+
+### Example Request
+
+```json
+{
+  "email": "john@example.com",
+  "password": "securepass123"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "_id": "65a1234567890abcdef12345",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Worker",
+      "isActive": true
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+---
+
+## Logout User
+
+<api method="POST" endpoint="/api/auth/logout" />
+
+Logout the current user by clearing the authentication cookie.
+
+**Access:** Private (requires authentication)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Logout successful",
+  "data": null
+}
+```
+
+---
+
+## Get Current User
+
+<api method="GET" endpoint="/api/auth/me" />
+
+Get the profile of the currently authenticated user.
+
+**Access:** Private (requires authentication)
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <ResponseField name="user" type="object">
+    User object with id, name, email, role, and isActive fields
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "User profile fetched successfully",
+  "data": {
+    "user": {
+      "_id": "65a1234567890abcdef12345",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Worker",
+      "isActive": true
+    }
+  }
+}
+```
+
+---
+
+## Update Profile
+
+<api method="PUT" endpoint="/api/auth/profile" />
+
+Update the current user's name and/or email.
+
+**Access:** Private (requires authentication)
+
+### Request Body
+
+<ParamField path="name" type="string">
+  New name (optional)
+</ParamField>
+
+<ParamField path="email" type="string">
+  New email address (optional, must be unique)
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "name": "John Smith",
+  "email": "johnsmith@example.com"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "user": {
+      "_id": "65a1234567890abcdef12345",
+      "name": "John Smith",
+      "email": "johnsmith@example.com",
+      "role": "Worker",
+      "isActive": true
+    }
+  }
+}
+```
+
+---
+
+## Change Password
+
+<api method="PUT" endpoint="/api/auth/change-password" />
+
+Change the current user's password.
+
+**Access:** Private (requires authentication)
+
+### Request Body
+
+<ParamField path="currentPassword" type="string" required>
+  User's current password
+</ParamField>
+
+<ParamField path="newPassword" type="string" required>
+  New password (minimum 6 characters)
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "currentPassword": "securepass123",
+  "newPassword": "newsecurepass456"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully",
+  "data": null
+}
+```
+
+---
+
+## Error Responses
+
+All authentication endpoints may return the following error responses:
+
+### 400 Bad Request
+
+```json
+{
+  "success": false,
+  "message": "Please provide all required fields"
+}
+```
+
+### 401 Unauthorized
+
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+### 403 Forbidden
+
+```json
+{
+  "success": false,
+  "message": "Your account has been deactivated. Please contact admin."
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "success": false,
+  "message": "Error during login"
+}
+```

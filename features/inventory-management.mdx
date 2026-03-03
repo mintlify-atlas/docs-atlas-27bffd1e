@@ -1,0 +1,362 @@
+---
+title: Inventory Management
+description: Real-time tracking and management of warehouse inventory with advanced filtering and analytics
+---
+
+## Overview
+
+SmartShelf's inventory management system provides comprehensive real-time tracking capabilities for warehouse inventory. The system supports full CRUD operations, advanced filtering, multi-field search, and detailed analytics to help you manage your inventory efficiently.
+
+## Real-Time Tracking Capabilities
+
+The inventory system tracks every item in your warehouse with the following details:
+
+- **Product Information**: Name, category, SKU, supplier
+- **Quantity Tracking**: Current stock levels with automatic updates
+- **Date Management**: Purchase date and expiry date tracking
+- **User Auditing**: Creator and last modifier information
+- **Timestamps**: Automatic creation and update timestamps
+
+<Note>
+  All inventory changes are tracked in real-time with user attribution for complete audit trails.
+</Note>
+
+## CRUD Operations
+
+### Get All Inventory Items
+
+Retrieve inventory with pagination, filtering, and sorting:
+
+```javascript
+GET /api/inventory?page=1&limit=10&category=Dairy&search=milk
+```
+
+**Query Parameters:**
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 10)
+- `category` - Filter by category name
+- `supplier` - Filter by supplier name
+- `search` - Search by product name or SKU
+- `minQty` / `maxQty` - Filter by quantity range
+- `sortBy` - Field to sort by
+- `order` - Sort order (asc/desc)
+
+**Implementation** (inventoryController.js:7-74):
+
+```javascript
+exports.getAllInventory = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const query = {};
+
+  // Category filtering
+  if (req.query.category) {
+    query.category = { $regex: req.query.category, $options: 'i' };
+  }
+
+  // Multi-field search
+  if (req.query.search) {
+    query.$or = [
+      { productName: { $regex: req.query.search, $options: 'i' } },
+      { sku: { $regex: req.query.search, $options: 'i' } }
+    ];
+  }
+
+  const items = await Inventory.find(query)
+    .populate('createdBy', 'name email')
+    .populate('lastModifiedBy', 'name email')
+    .sort(sortOption)
+    .skip(skip)
+    .limit(limit);
+};
+```
+
+### Create Inventory Item
+
+Add new items to inventory with validation (inventoryController.js:105-166):
+
+```javascript
+POST /api/inventory
+```
+
+**Required Fields:**
+- `productName` - Product name
+- `category` - Product category (Dairy, Bakery, Produce, Meat, Beverages, Seafood)
+- `sku` - Stock Keeping Unit (unique identifier)
+- `quantity` - Initial quantity
+- `purchaseDate` - Date of purchase
+- `expiryDate` - Expiration date
+- `supplier` - Supplier name
+
+**Example Request:**
+```json
+{
+  "productName": "Fresh Milk",
+  "category": "Dairy",
+  "sku": "DA-001",
+  "quantity": 150,
+  "purchaseDate": "2025-11-01",
+  "expiryDate": "2025-11-15",
+  "supplier": "Local Dairy Farm"
+}
+```
+
+<Warning>
+  SKU must be unique across all inventory items. Duplicate SKUs will be rejected.
+</Warning>
+
+**Validations:**
+- SKU uniqueness check
+- Expiry date must be after purchase date
+- All required fields must be provided
+
+### Update Inventory Item
+
+Modify existing inventory items (inventoryController.js:171-227):
+
+```javascript
+PUT /api/inventory/:id
+```
+
+**Updatable Fields:**
+- `productName`
+- `category`
+- `quantity`
+- `purchaseDate`
+- `expiryDate`
+- `supplier`
+
+**Features:**
+- Automatic `lastModifiedBy` tracking
+- Date validation on update
+- Partial updates supported
+
+### Quick Quantity Update
+
+Update inventory quantities with operations (inventoryController.js:258-309):
+
+```javascript
+PATCH /api/inventory/:id/quantity
+```
+
+**Operations:**
+- `add` - Increase quantity
+- `subtract` - Decrease quantity (minimum 0)
+- `set` - Set to exact value
+
+**Example Request:**
+```json
+{
+  "quantity": 25,
+  "operation": "add"
+}
+```
+
+### Delete Inventory Item
+
+Remove items from inventory (inventoryController.js:232-253):
+
+```javascript
+DELETE /api/inventory/:id
+```
+
+## Category-Based Filtering
+
+The system supports filtering by six predefined categories:
+
+<CardGroup cols={3}>
+  <Card title="Dairy" icon="cheese">
+    Milk, yogurt, cheese, eggs
+  </Card>
+  <Card title="Bakery" icon="bread-slice">
+    Bread, pastries, baked goods
+  </Card>
+  <Card title="Produce" icon="carrot">
+    Fruits, vegetables, fresh produce
+  </Card>
+  <Card title="Meat" icon="drumstick-bite">
+    Beef, chicken, pork products
+  </Card>
+  <Card title="Beverages" icon="mug-hot">
+    Drinks, juices, water
+  </Card>
+  <Card title="Seafood" icon="fish">
+    Fish, shellfish, seafood products
+  </Card>
+</CardGroup>
+
+## Multi-Field Search
+
+The search functionality supports searching across multiple fields simultaneously (InventoryPage.tsx:210-220):
+
+```typescript
+// Search implementation
+const keywords = searchTerm.toLowerCase().split(' ');
+filtered = filtered.filter(item => {
+  const itemCorpus = `${item.productName} ${item.sku} ${item.supplier}`.toLowerCase();
+  return keywords.every(keyword => itemCorpus.includes(keyword));
+});
+```
+
+**Searchable Fields:**
+- Product name
+- SKU code
+- Supplier name
+
+**Example Searches:**
+- `milk dairy` - Finds items with both "milk" and "dairy"
+- `DA-001` - Finds items with SKU DA-001
+- `Local Farm` - Finds items from Local Farm supplier
+
+## Inventory Analytics and KPIs
+
+### Inventory Summary
+
+Get comprehensive inventory statistics (inventoryController.js:386-432):
+
+```javascript
+GET /api/inventory/analytics/summary
+```
+
+**Response:**
+```json
+{
+  "summary": {
+    "totalItems": 250,
+    "totalQuantity": 5430,
+    "categoriesCount": 6,
+    "suppliersCount": 15,
+    "lowStockCount": 8,
+    "outOfStockCount": 3,
+    "expiringSoonCount": 12,
+    "expiredCount": 2
+  }
+}
+```
+
+### Category Analytics
+
+Analyze inventory distribution by category (inventoryController.js:314-345):
+
+```javascript
+GET /api/inventory/analytics/by-category
+```
+
+**Response:**
+```json
+{
+  "categories": [
+    {
+      "category": "Dairy",
+      "totalQuantity": 1245,
+      "itemCount": 45,
+      "avgQuantity": 28
+    }
+  ]
+}
+```
+
+### Supplier Analytics
+
+Track inventory by supplier (inventoryController.js:350-381):
+
+```javascript
+GET /api/inventory/analytics/by-supplier
+```
+
+**Metrics:**
+- Total quantity per supplier
+- Number of items per supplier
+- Categories supplied by each supplier
+
+## UI Features
+
+### Inventory Table View
+
+The main inventory interface displays (InventoryPage.tsx:344-389):
+
+- **Product Name** - Primary identifier
+- **Category** - Product category badge
+- **SKU** - Unique stock code
+- **Quantity** - Current stock level
+- **Supplier** - Supplier name
+- **Actions** - Edit and delete buttons
+
+### Add/Edit Modal
+
+User-friendly form interface (InventoryPage.tsx:7-156) with:
+
+<Steps>
+  <Step title="Product Details">
+    Enter product name, category, and SKU
+  </Step>
+  <Step title="Quantity & Dates">
+    Set quantity, purchase date, and expiry date
+  </Step>
+  <Step title="Supplier Info">
+    Specify supplier name
+  </Step>
+  <Step title="Validation">
+    System validates all inputs and checks for duplicates
+  </Step>
+</Steps>
+
+### Filter & Search UI
+
+Powerful filtering interface (InventoryPage.tsx:294-343):
+
+- **Search Bar** - Multi-field search across product, SKU, supplier
+- **Category Dropdown** - Multi-select category filter
+- **Clear Filters** - Reset all filters with one click
+
+## Access Control
+
+| Role | View | Create | Update | Delete |
+|------|------|--------|--------|--------|
+| Admin | ✅ | ✅ | ✅ | ✅ |
+| Manager | ✅ | ✅ | ✅ | ✅ |
+| Worker | ✅ | ❌ | ❌ | ❌ |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="SKU Naming Conventions">
+    Use consistent SKU formats for easier management:
+    - Dairy: DA-001, DA-002
+    - Bakery: BK-001, BK-002
+    - Produce: PR-001, PR-002
+  </Accordion>
+
+  <Accordion title="Regular Audits">
+    Perform regular inventory audits to ensure data accuracy:
+    - Weekly physical stock counts
+    - Monthly category reviews
+    - Quarterly supplier analysis
+  </Accordion>
+
+  <Accordion title="Expiry Management">
+    Monitor expiry dates closely:
+    - Set alerts for items expiring within 7 days
+    - Use FEFO ordering for optimal rotation
+    - Remove expired items promptly
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="FEFO Ordering" icon="sort" href="/features/fefo-ordering">
+    Automatic expiry-based prioritization
+  </Card>
+  <Card title="Alert System" icon="bell" href="/features/alert-system">
+    Real-time inventory alerts
+  </Card>
+  <Card title="Demand Forecasting" icon="chart-line" href="/features/demand-forecasting">
+    Predictive stock analysis
+  </Card>
+  <Card title="Analytics Dashboard" icon="chart-pie" href="/features/analytics-dashboard">
+    Comprehensive inventory insights
+  </Card>
+</CardGroup>

@@ -1,0 +1,457 @@
+---
+title: Manager Guide
+description: Complete guide for SmartShelf managers including inventory management, task assignment, FEFO ordering, and demand forecasting
+---
+
+## Overview
+
+As a SmartShelf Manager, you are responsible for inventory operations, task assignment, and utilizing analytics to optimize warehouse efficiency. This guide covers your workflows and best practices.
+
+## Manager Capabilities
+
+According to the permission matrix, managers have the following privileges:
+
+| Feature | Access Level |
+|---------|-------------|
+| Dashboard Overview | ✅ Full Access |
+| View Inventory | ✅ Full Access |
+| Add/Edit Inventory | ✅ Full Access |
+| Delete Inventory | ✅ Full Access |
+| User Management | ❌ Admin Only |
+| Create Tasks | ✅ Full Access |
+| View All Tasks | ✅ Full Access |
+| Update Task Status | ✅ Full Access |
+| View Analytics | ✅ Full Access |
+| **FEFO Ordering** | ✅ Full Access |
+| **Demand Forecast** | ✅ Full Access |
+
+## Dashboard Overview
+
+Your manager dashboard provides comprehensive operational insights:
+
+### Key Metrics
+
+<CardGroup cols={2}>
+  <Card title="Total Items" icon="box">
+    Overall count of inventory items you manage
+  </Card>
+  
+  <Card title="Low Stock" icon="exclamation-triangle">
+    Items below reorder threshold requiring attention
+  </Card>
+  
+  <Card title="Expiring Soon" icon="clock">
+    Items expiring within the next 7 days
+  </Card>
+  
+  <Card title="Active Tasks" icon="tasks">
+    Tasks currently pending or in progress
+  </Card>
+</CardGroup>
+
+### Live Alerts Feed
+
+Your dashboard includes a real-time notification feed showing:
+
+- 🔴 **Critical alerts**: Items expiring in 1-2 days
+- 🟠 **High priority**: Items expiring in 3-7 days or very low stock
+- 🟡 **Medium priority**: Low stock items
+- 🔵 **Informational**: General updates
+
+Each alert displays:
+- Product name and category
+- Human-readable message
+- Timestamp
+
+## Inventory Management
+
+### Adding New Inventory
+
+<Steps>
+  <Step title="Navigate to Inventory Page">
+    Access the inventory management interface from the main menu.
+  </Step>
+  
+  <Step title="Click 'Add Item' Button">
+    Open the inventory creation form.
+  </Step>
+  
+  <Step title="Enter Product Details">
+    Fill in all required fields:
+    - **Product Name**: Clear, descriptive name
+    - **Category**: Select appropriate category (Dairy, Bakery, Meat, Seafood, etc.)
+    - **SKU**: Use consistent format (e.g., DA-001, BK-002)
+    - **Quantity**: Initial stock quantity
+    - **Purchase Date**: Date item was received
+    - **Expiry Date**: Product expiration date
+    - **Supplier**: Vendor or supplier name
+  </Step>
+  
+  <Step title="Submit and Verify">
+    Save the item and verify it appears in the inventory list.
+  </Step>
+</Steps>
+
+### Updating Inventory
+
+<Note>
+Regularly update inventory quantities as items are sold or consumed to maintain accurate forecasting.
+</Note>
+
+<Steps>
+  <Step title="Locate the Item">
+    Use the search or filter functions to find the inventory item.
+  </Step>
+  
+  <Step title="Click Edit">
+    Open the edit modal for that item.
+  </Step>
+  
+  <Step title="Modify Details">
+    Update quantity, expiry date, or other fields as needed.
+  </Step>
+  
+  <Step title="Save Changes">
+    Confirm updates and verify changes are reflected.
+  </Step>
+</Steps>
+
+### Deleting Inventory Items
+
+<Warning>
+Only delete items that are truly removed from the system (expired, damaged, etc.). For sold items, update the quantity instead.
+</Warning>
+
+## Task Creation and Assignment
+
+### Creating Tasks for Workers
+
+<Steps>
+  <Step title="Access Task Management">
+    Navigate to the Task Management page.
+  </Step>
+  
+  <Step title="Click 'Create Task'">
+    Open the task creation form.
+  </Step>
+  
+  <Step title="Enter Task Details">
+    - **Description**: Clear, actionable task description (e.g., "Inspect expired items in dairy section")
+    - **Assigned To**: Select a worker from the dropdown list
+  </Step>
+  
+  <Step title="Submit Task">
+    Save the task. It will appear as "Pending" for the assigned worker.
+  </Step>
+</Steps>
+
+### Common Task Types
+
+<CardGroup cols={2}>
+  <Card title="Expiry Checks">
+    "Inspect items expiring in [category] section"
+  </Card>
+  
+  <Card title="Stock Replenishment">
+    "Restock [product] - current level: [X] units"
+  </Card>
+  
+  <Card title="Quality Control">
+    "Check quality of [product] batch [SKU]"
+  </Card>
+  
+  <Card title="Inventory Audit">
+    "Verify physical count for [category] items"
+  </Card>
+</CardGroup>
+
+### Monitoring Task Progress
+
+Track tasks through three statuses:
+1. **Pending**: Task assigned but not started
+2. **In Progress**: Worker has begun the task
+3. **Completed**: Task finished
+
+You can update task status manually or workers can update their own assigned tasks.
+
+## FEFO Ordering Management
+
+<Info>
+**FEFO (First Expired, First Out)** ensures items closest to expiration are prioritized for dispatch.
+</Info>
+
+### Understanding FEFO Priority
+
+Items are categorized by urgency based on days until expiry:
+
+- **Critical** (🔴): ≤ 3 days until expiry
+- **High** (🟠): 4-7 days until expiry
+- **Medium** (🟡): 8-14 days until expiry
+- **Low** (🔵): > 14 days until expiry
+
+### Using FEFO Dashboard
+
+Your dashboard displays FEFO items in priority order:
+
+<Steps>
+  <Step title="Review FEFO List">
+    Check the "FEFO Ordering" section on your dashboard.
+  </Step>
+  
+  <Step title="Note Priority Items">
+    Items are numbered #1, #2, #3, etc., in dispatch order.
+  </Step>
+  
+  <Step title="Create Dispatch Tasks">
+    Assign tasks to workers to prioritize these items for sale or use.
+  </Step>
+  
+  <Step title="Monitor Daily">
+    Check FEFO list daily as urgency levels change based on approaching expiry dates.
+  </Step>
+</Steps>
+
+### FEFO Best Practices
+
+<AccordionGroup>
+  <Accordion title="Daily Review">
+    Check the FEFO list at the start of each shift to identify critical items.
+  </Accordion>
+  
+  <Accordion title="Worker Communication">
+    Create tasks for workers to prioritize high-urgency items for customer orders.
+  </Accordion>
+  
+  <Accordion title="Stock Rotation">
+    Use FEFO data to inform physical stock rotation in the warehouse.
+  </Accordion>
+  
+  <Accordion title="Supplier Coordination">
+    Share expiry data with suppliers to improve delivery scheduling.
+  </Accordion>
+</AccordionGroup>
+
+## Demand Forecasting
+
+### Understanding Forecast Analytics
+
+The demand forecasting system provides 7-day projections based on:
+- Historical consumption patterns
+- Daily usage rates
+- Trend analysis (increasing, declining, stable)
+
+### Forecast Dashboard Features
+
+<Card title="Product Selector">
+  Switch between different products to view individual forecasts. Each card shows:
+  - Product name and category
+  - Current stock level
+  - Quick comparison metrics
+</Card>
+
+### Key Forecast Metrics
+
+<CardGroup cols={2}>
+  <Card title="Current Stock Level" icon="warehouse">
+    Quantity available right now
+  </Card>
+  
+  <Card title="Daily Consumption Rate" icon="chart-line">
+    Average units consumed per day
+  </Card>
+  
+  <Card title="Forecast Accuracy" icon="bullseye">
+    Confidence score (0-100%) for predictions
+  </Card>
+  
+  <Card title="Reorder Timeline" icon="calendar">
+    Days until stock reaches reorder threshold
+  </Card>
+</CardGroup>
+
+### Reading the Forecast Graph
+
+The interactive graph displays three projection models:
+
+1. **Ensemble** (solid line, blue): Primary forecast combining multiple models
+2. **Linear Regression** (dotted line, gray): Trend-based projection
+3. **Moving Average** (dashed line, cyan): Smoothed historical pattern
+
+<Tip>
+The ensemble model provides the most accurate forecast by combining regression and moving average approaches.
+</Tip>
+
+### Trend Indicators
+
+- 🟢 **Increasing**: Demand growing (stock depleting faster)
+- 🔴 **Declining**: Demand dropping (stock depleting slower)
+- 🟡 **Stable**: Consistent consumption rate
+
+### Using Forecasts for Reordering
+
+<Steps>
+  <Step title="Review Forecast Data">
+    Check the "Days Until Reorder Needed" metric.
+  </Step>
+  
+  <Step title="Identify Critical Items">
+    Items showing < 3 days need immediate reordering.
+  </Step>
+  
+  <Step title="Calculate Order Quantity">
+    Use daily consumption rate × lead time + safety stock.
+  </Step>
+  
+  <Step title="Monitor Accuracy">
+    Track forecast accuracy scores to build confidence in predictions.
+  </Step>
+</Steps>
+
+### Forecast Model Confidence
+
+The dashboard shows confidence scores for each model:
+- **Ensemble**: Combined confidence from all models
+- **Linear Regression**: R² score indicating trend fit quality
+- **Moving Average**: Smoothing accuracy
+
+Scores above 80% indicate highly reliable forecasts.
+
+## Top Selling Products
+
+Monitor your fastest-moving inventory:
+
+### Sales Velocity Metric
+
+**Sales Velocity** = Units sold per day
+
+The "Top Selling Products" section ranks items by velocity, showing:
+- Product name and SKU
+- Current stock quantity
+- Estimated units sold
+- Sales velocity (units/day)
+
+### Using Sales Data
+
+<AccordionGroup>
+  <Accordion title="Optimize Stock Levels">
+    Maintain higher quantities for top sellers to prevent stockouts.
+  </Accordion>
+  
+  <Accordion title="Plan Promotions">
+    Use velocity data to identify products for sales campaigns.
+  </Accordion>
+  
+  <Accordion title="Supplier Negotiations">
+    Leverage high-volume data when negotiating with suppliers.
+  </Accordion>
+  
+  <Accordion title="Seasonal Trends">
+    Track velocity changes over time to identify seasonal patterns.
+  </Accordion>
+</AccordionGroup>
+
+## Analytics Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Morning Review" icon="sun">
+    Start each day by reviewing live alerts, FEFO priorities, and critical forecasts.
+  </Card>
+  
+  <Card title="Weekly Planning" icon="calendar-week">
+    Use demand forecasts to plan weekly purchase orders and stock rotations.
+  </Card>
+  
+  <Card title="Task Prioritization" icon="list-check">
+    Create tasks based on FEFO urgency and low stock alerts.
+  </Card>
+  
+  <Card title="Data-Driven Decisions" icon="chart-bar">
+    Rely on forecast accuracy scores when making reorder decisions.
+  </Card>
+</CardGroup>
+
+## Common Manager Workflows
+
+### Daily Operations Checklist
+
+<Steps>
+  <Step title="Review Dashboard">
+    Check live alerts, FEFO list, and active tasks (5 min)
+  </Step>
+  
+  <Step title="Address Critical Alerts">
+    Create tasks for expired/expiring items and low stock (10 min)
+  </Step>
+  
+  <Step title="Monitor Task Progress">
+    Review worker task completion status (5 min)
+  </Step>
+  
+  <Step title="Update Inventory">
+    Adjust quantities based on consumption and new stock (15 min)
+  </Step>
+</Steps>
+
+### Weekly Reordering Workflow
+
+<Steps>
+  <Step title="Review Demand Forecasts">
+    Check 7-day projections for all key products.
+  </Step>
+  
+  <Step title="Identify Reorder Needs">
+    Note items with < 5 days until reorder threshold.
+  </Step>
+  
+  <Step title="Calculate Order Quantities">
+    Use: (Daily consumption × Lead time) + Safety stock
+  </Step>
+  
+  <Step title="Place Orders">
+    Contact suppliers and place purchase orders.
+  </Step>
+  
+  <Step title="Create Receiving Tasks">
+    Assign workers to verify and stock incoming shipments.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Forecast Accuracy Low">
+    Low accuracy (< 60%) may indicate:
+    - Insufficient historical data (need more consumption records)
+    - Irregular consumption patterns
+    - Recent changes in demand
+    
+    Solution: Monitor for 1-2 more weeks to build better data.
+  </Accordion>
+  
+  <Accordion title="Workers Not Updating Tasks">
+    If tasks stay in "Pending" status:
+    - Verify workers can access their dashboard
+    - Ensure task descriptions are clear and actionable
+    - Follow up directly with assigned workers
+  </Accordion>
+  
+  <Accordion title="FEFO List Empty">
+    An empty FEFO list means:
+    - No items are close to expiry (good!)
+    - Or expiry dates may not be entered correctly
+    
+    Verify all inventory has accurate expiry dates.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Guide" icon="shield-halved" href="/guides/admin-guide">
+    Learn about administrator capabilities and user management
+  </Card>
+  
+  <Card title="Worker Guide" icon="clipboard-list" href="/guides/worker-guide">
+    Understand how workers interact with assigned tasks
+  </Card>
+</CardGroup>

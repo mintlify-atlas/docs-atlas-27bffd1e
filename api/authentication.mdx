@@ -1,0 +1,419 @@
+---
+title: 'Authentication'
+description: 'JWT-based authentication system with role-based access control'
+---
+
+## Overview
+
+SmartShelf API uses **JSON Web Tokens (JWT)** for secure, stateless authentication. Tokens are issued upon successful registration or login and must be included in subsequent requests to protected endpoints.
+
+## Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Database
+    
+    Client->>API: POST /api/auth/register or /api/auth/login
+    API->>Database: Verify credentials
+    Database-->>API: User data
+    API->>API: Generate JWT token
+    API-->>Client: Return token + user data
+    Client->>API: Request with Authorization header
+    API->>API: Verify JWT token
+    API-->>Client: Protected resource
+```
+
+## Registration
+
+Create a new user account.
+
+### Endpoint
+
+```
+POST /api/auth/register
+```
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  User's full name
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Valid email address (stored in lowercase)
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Password (minimum 6 characters)
+</ParamField>
+
+<ParamField body="role" type="string">
+  User role: `Admin`, `Manager`, or `Worker` (defaults to `Worker`)
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepass123",
+    "role": "Manager"
+  }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Manager",
+      "isActive": true,
+      "createdAt": "2026-03-03T10:00:00.000Z"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjUwN2YxZjc3YmNmODZjZDc5OTQzOTAxMSIsImlhdCI6MTcwOTQ2MTIwMCwiZXhwIjoxNzEwMDY2MDAwfQ.example"
+  }
+}
+```
+
+<Note>
+The token is also automatically set as an HttpOnly cookie named `token` for browser-based clients.
+</Note>
+
+## Login
+
+Authenticate with existing credentials.
+
+### Endpoint
+
+```
+POST /api/auth/login
+```
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "securepass123"
+  }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Manager",
+      "isActive": true
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+## Token Format and Usage
+
+### JWT Structure
+
+Tokens are generated using the `jsonwebtoken` library with the following payload:
+
+```javascript
+// src/utils/jwtHelper.js:4-11
+{
+  id: userId,
+  iat: 1709461200,  // Issued at timestamp
+  exp: 1710066000   // Expiration timestamp (default: 7 days)
+}
+```
+
+### Token Expiration
+
+- **Default expiration:** 7 days
+- **Configurable via:** `JWT_EXPIRE` environment variable
+- **Cookie expiration:** Matches JWT expiration (configurable via `JWT_COOKIE_EXPIRE`)
+
+### Authorization Header Format
+
+Include the token in the `Authorization` header of protected requests:
+
+```
+Authorization: Bearer <your_jwt_token>
+```
+
+### Example Authenticated Request
+
+```bash
+curl http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### Cookie-Based Authentication
+
+Alternatively, the API accepts tokens from HttpOnly cookies:
+
+```bash
+curl http://localhost:5000/api/auth/me \
+  --cookie "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+<Info>
+The `protect` middleware checks both the Authorization header and cookies (src/middlewares/authMiddleware.js:6-17).
+</Info>
+
+## Protected Routes
+
+All protected endpoints require a valid JWT token. The authentication middleware:
+
+1. Extracts token from cookies or Authorization header
+2. Verifies token signature using `JWT_SECRET`
+3. Checks if user exists and is active
+4. Attaches user object to `req.user`
+
+### Get Current User
+
+```
+GET /api/auth/me
+```
+
+Returns the authenticated user's profile.
+
+### Update Profile
+
+```
+PUT /api/auth/profile
+```
+
+Update name or email.
+
+**Request Body:**
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com"
+}
+```
+
+### Change Password
+
+```
+PUT /api/auth/change-password
+```
+
+**Request Body:**
+
+```json
+{
+  "currentPassword": "oldpass123",
+  "newPassword": "newpass456"
+}
+```
+
+### Logout
+
+```
+POST /api/auth/logout
+```
+
+Clears the authentication cookie.
+
+## Role-Based Access Control (RBAC)
+
+SmartShelf implements three user roles with different permission levels:
+
+<Tabs>
+  <Tab title="Admin">
+    **Full system access**
+    - Manage all users
+    - Configure system settings
+    - Access all inventory and analytics
+    - Create/delete resources
+  </Tab>
+  <Tab title="Manager">
+    **Operational management**
+    - View and manage inventory
+    - Assign tasks to workers
+    - View analytics and reports
+    - Limited user management
+  </Tab>
+  <Tab title="Worker">
+    **Basic access**
+    - View assigned tasks
+    - Update task status
+    - View inventory (read-only)
+    - Update own profile
+  </Tab>
+</Tabs>
+
+### Authorization Middleware
+
+The `authorize` middleware restricts endpoints by role:
+
+```javascript
+// src/middlewares/authMiddleware.js:51-67
+const { protect, authorize } = require('../middlewares/authMiddleware');
+
+// Require Admin role
+router.delete('/users/:id', protect, authorize('Admin'), deleteUser);
+
+// Allow Admin or Manager
+router.post('/tasks', protect, authorize('Admin', 'Manager'), createTask);
+```
+
+### Example: Role Check Error
+
+If a Worker attempts to access an Admin-only endpoint:
+
+```json
+{
+  "success": false,
+  "message": "User role 'Worker' is not authorized to access this route"
+}
+```
+
+## Authentication Errors
+
+### Missing Token
+
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route. Please login."
+}
+```
+
+### Invalid or Expired Token
+
+```json
+{
+  "success": false,
+  "message": "Not authorized. Invalid or expired token."
+}
+```
+
+### Deactivated Account
+
+If the user's `isActive` flag is false:
+
+```json
+{
+  "success": false,
+  "message": "Your account has been deactivated. Please contact admin."
+}
+```
+
+### Invalid Credentials
+
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+### Email Already Exists
+
+```json
+{
+  "success": false,
+  "message": "User with this email already exists"
+}
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Store tokens securely">
+    - Use HttpOnly cookies in browser environments to prevent XSS attacks
+    - Store tokens in secure storage (not localStorage) on mobile/desktop apps
+    - Never expose tokens in URLs or logs
+  </Accordion>
+
+  <Accordion title="Handle token expiration">
+    - Implement automatic logout on token expiration
+    - Consider implementing refresh token flow for long-lived sessions
+    - Display clear error messages when tokens expire
+  </Accordion>
+
+  <Accordion title="Use HTTPS in production">
+    - Always use HTTPS to encrypt tokens in transit
+    - Set `secure: true` in cookie options (controlled by `NODE_ENV`)
+    - Configure proper CORS origins
+  </Accordion>
+
+  <Accordion title="Password requirements">
+    - Minimum 6 characters (enforced by API)
+    - Passwords are hashed using bcryptjs with salt
+    - Never log or display passwords in plain text
+  </Accordion>
+
+  <Accordion title="Account security">
+    - Change passwords regularly using `/api/auth/change-password`
+    - Monitor for unauthorized access attempts
+    - Admins can deactivate compromised accounts
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+Required authentication configuration:
+
+```bash
+JWT_SECRET=your_secret_key_here
+JWT_EXPIRE=7d
+JWT_COOKIE_EXPIRE=7
+NODE_ENV=production
+```
+
+<Warning>
+Never commit your `JWT_SECRET` to version control. Use strong, randomly generated secrets in production.
+</Warning>
+
+## Implementation Reference
+
+Key files implementing authentication:
+
+- **Controller:** `src/controllers/authController.js` - Handles registration, login, logout
+- **Middleware:** `src/middlewares/authMiddleware.js` - Token verification and role authorization
+- **Helper:** `src/utils/jwtHelper.js` - Token generation and verification
+- **Model:** `src/models/User.js` - User schema with password hashing
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Overview" icon="book" href="/api/overview">
+    Learn about response formats and rate limiting
+  </Card>
+  <Card title="User Management" icon="users" href="/api/users">
+    Explore user CRUD operations and permissions
+  </Card>
+</CardGroup>

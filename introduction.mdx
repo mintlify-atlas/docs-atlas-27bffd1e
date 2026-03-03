@@ -1,0 +1,113 @@
+---
+title: Introduction to SmartShelf
+description: An AI-powered warehouse inventory management system with real-time tracking, FEFO ordering, and demand forecasting
+---
+
+# Welcome to SmartShelf
+
+SmartShelf is an intelligent warehouse inventory management system designed to optimize warehouse operations through automation, predictive analytics, and real-time monitoring. Built with the MERN stack, it addresses critical challenges in modern warehouse management.
+
+## What is SmartShelf?
+
+SmartShelf transforms how warehouses manage inventory by combining real-time tracking with intelligent algorithms. It eliminates manual errors, prevents product expiry waste, and provides predictive capabilities that help you stay ahead of inventory challenges.
+
+### Key problems SmartShelf solves
+
+- Inventory discrepancies and manual errors
+- Product expiry and waste management
+- Inefficient task allocation
+- Lack of predictive capabilities
+- Limited real-time visibility
+
+## Core features
+
+<CardGroup cols={2}>
+  <Card title="Real-time inventory tracking" icon="box">
+    Track inventory items with full CRUD operations, category-based filtering, and multi-field search across product names, SKUs, and suppliers.
+  </Card>
+  
+  <Card title="FEFO ordering system" icon="clock">
+    First Expired, First Out algorithm automatically prioritizes items based on expiry dates with urgency levels from critical to low.
+  </Card>
+  
+  <Card title="Demand forecasting" icon="chart-line">
+    7-day demand projections based on historical data with daily consumption rates and trend indicators for proactive inventory planning.
+  </Card>
+  
+  <Card title="Alert system" icon="bell">
+    Real-time notifications for critical events including expired items, items expiring soon, low stock, and out of stock situations.
+  </Card>
+  
+  <Card title="Task management" icon="list-check">
+    Create and assign tasks to workers with status tracking from pending to completed, including real-time updates and analytics.
+  </Card>
+  
+  <Card title="Analytics dashboard" icon="chart-simple">
+    Role-based dashboards for admins, managers, and workers with live alerts, forecasting, top products, and task tracking.
+  </Card>
+</CardGroup>
+
+## Get started quickly
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get SmartShelf running locally in under 10 minutes
+  </Card>
+  
+  <Card title="Installation guide" icon="download" href="/installation">
+    Detailed setup instructions with configuration options
+  </Card>
+  
+  <Card title="Inventory management" icon="warehouse" href="/features/inventory-management">
+    Learn how to manage inventory items effectively
+  </Card>
+  
+  <Card title="FEFO ordering" icon="sort" href="/features/fefo-ordering">
+    Understand the First Expired, First Out algorithm
+  </Card>
+</CardGroup>
+
+## Built with MERN stack
+
+SmartShelf leverages modern web technologies for a robust and scalable solution:
+
+**Frontend**
+- React 18 with hooks for reactive UI
+- TypeScript for type safety
+- Tailwind CSS for responsive design
+- Vite for fast builds
+
+**Backend**
+- Node.js runtime environment
+- Express.js web framework
+- MongoDB NoSQL database
+- Mongoose ODM for data modeling
+- JWT authentication with bcrypt password hashing
+
+## User roles and permissions
+
+SmartShelf supports three user roles with specific permissions:
+
+- **Admin**: Full system access including user management and all features
+- **Manager**: Inventory management, task creation, analytics, and forecasting
+- **Worker**: View assigned tasks and update task status
+
+<Note>
+  Each role has a customized dashboard tailored to their specific responsibilities and workflows.
+</Note>
+
+## Next steps
+
+<Steps>
+  <Step title="Install SmartShelf">
+    Follow the [quickstart guide](/quickstart) to get SmartShelf running locally
+  </Step>
+  
+  <Step title="Explore features">
+    Learn about inventory tracking, FEFO ordering, and demand forecasting
+  </Step>
+  
+  <Step title="Configure your system">
+    Set up user roles, alert thresholds, and customize for your warehouse
+  </Step>
+</Steps>

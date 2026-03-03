@@ -1,0 +1,485 @@
+---
+title: 'Alert System'
+description: 'Monitor inventory alerts for low stock, expiring items, and critical situations'
+---
+
+## Overview
+
+The Alert System API provides real-time monitoring of inventory issues including low stock, expiring products, expired items, and out-of-stock situations. All endpoints require authentication.
+
+---
+
+## Low Stock Alerts
+
+<api method="GET" endpoint="/api/alerts/low-stock" />
+
+Get items with stock levels below the threshold.
+
+**Access:** Private (all authenticated users)
+
+### Query Parameters
+
+<ParamField query="threshold" type="number" default="10">
+  Stock threshold (uses LOW_STOCK_THRESHOLD env variable if not provided)
+</ParamField>
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Array of low stock items
+  <ResponseField name="alertType" type="string">
+    Alert type: `low_stock`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    `HIGH` if quantity ≤ threshold/2, otherwise `MEDIUM`
+  </ResponseField>
+  <ResponseField name="message" type="string">
+    Alert message with current stock level
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of low stock items
+</ResponseField>
+
+<ResponseField name="threshold" type="number">
+  Threshold value used
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Low stock alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Organic Apples",
+        "category": "Fruits",
+        "sku": "FRT-001",
+        "quantity": 4,
+        "expiryDate": "2024-02-15T00:00:00.000Z",
+        "supplier": "Fresh Farms Ltd",
+        "alertType": "low_stock",
+        "severity": "HIGH",
+        "message": "Only 4 units left in stock"
+      }
+    ],
+    "count": 1,
+    "threshold": 10
+  }
+}
+```
+
+---
+
+## Expiring Soon Alerts
+
+<api method="GET" endpoint="/api/alerts/expiring-soon" />
+
+Get items expiring within the specified number of days.
+
+**Access:** Private (all authenticated users)
+
+### Query Parameters
+
+<ParamField query="days" type="number" default="7">
+  Number of days to look ahead (uses EXPIRY_ALERT_DAYS env variable if not provided)
+</ParamField>
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Array of expiring items sorted by expiry date
+  <ResponseField name="alertType" type="string">
+    Alert type: `expiring_soon`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    `CRITICAL` (≤1 day), `HIGH` (≤3 days), `MEDIUM` (≤5 days), or `LOW` (>5 days)
+  </ResponseField>
+  <ResponseField name="daysUntilExpiry" type="number">
+    Days until expiration
+  </ResponseField>
+  <ResponseField name="message" type="string">
+    Alert message with days until expiry
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of expiring items
+</ResponseField>
+
+<ResponseField name="days" type="number">
+  Days parameter used
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Expiring soon alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "quantity": 25,
+        "expiryDate": "2024-01-18T00:00:00.000Z",
+        "alertType": "expiring_soon",
+        "severity": "HIGH",
+        "daysUntilExpiry": 2,
+        "message": "Expires in 2 days"
+      }
+    ],
+    "count": 1,
+    "days": 7
+  }
+}
+```
+
+---
+
+## Expired Items Alerts
+
+<api method="GET" endpoint="/api/alerts/expired" />
+
+Get items that have passed their expiry date.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Array of expired items sorted by expiry date (oldest first)
+  <ResponseField name="alertType" type="string">
+    Alert type: `expired`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    Always `CRITICAL`
+  </ResponseField>
+  <ResponseField name="daysExpired" type="number">
+    Days since expiration
+  </ResponseField>
+  <ResponseField name="message" type="string">
+    Alert message with days expired
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of expired items
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Expired items alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Old Cheese",
+        "category": "Dairy",
+        "quantity": 5,
+        "expiryDate": "2024-01-10T00:00:00.000Z",
+        "alertType": "expired",
+        "severity": "CRITICAL",
+        "daysExpired": 5,
+        "message": "Expired 5 days ago"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+---
+
+## Out of Stock Alerts
+
+<api method="GET" endpoint="/api/alerts/out-of-stock" />
+
+Get items with zero quantity.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Array of out-of-stock items
+  <ResponseField name="alertType" type="string">
+    Alert type: `out_of_stock`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    Always `HIGH`
+  </ResponseField>
+  <ResponseField name="message" type="string">
+    Alert message
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of out-of-stock items
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Out of stock alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Bananas",
+        "category": "Fruits",
+        "sku": "FRT-015",
+        "quantity": 0,
+        "alertType": "out_of_stock",
+        "severity": "HIGH",
+        "message": "Out of stock - Immediate restocking required"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+---
+
+## Critical Alerts
+
+<api method="GET" endpoint="/api/alerts/critical" />
+
+Get all critical alerts combined (expired, expiring in ≤3 days, out of stock, critically low stock below 5 units).
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+<ResponseField name="alerts" type="array">
+  Combined array of critical alerts sorted by priority
+  <ResponseField name="alertType" type="string">
+    Alert type: `expired`, `expiring_critical`, `out_of_stock`, or `critical_low_stock`
+  </ResponseField>
+  <ResponseField name="severity" type="string">
+    `CRITICAL` or `HIGH`
+  </ResponseField>
+  <ResponseField name="priority" type="number">
+    Priority ranking (1 = highest)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Total number of critical alerts
+</ResponseField>
+
+<ResponseField name="breakdown" type="object">
+  <ResponseField name="expired" type="number">
+    Count of expired items
+  </ResponseField>
+  <ResponseField name="expiringSoon" type="number">
+    Count of items expiring in ≤3 days
+  </ResponseField>
+  <ResponseField name="outOfStock" type="number">
+    Count of out-of-stock items
+  </ResponseField>
+  <ResponseField name="criticalLowStock" type="number">
+    Count of items with less than 5 units
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Critical alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "productName": "Old Cheese",
+        "alertType": "expired",
+        "severity": "CRITICAL",
+        "priority": 1,
+        "message": "Expired 5 days ago"
+      },
+      {
+        "productName": "Fresh Milk",
+        "alertType": "expiring_critical",
+        "severity": "CRITICAL",
+        "priority": 2,
+        "daysUntilExpiry": 2,
+        "message": "Expires in 2 days"
+      }
+    ],
+    "count": 2,
+    "breakdown": {
+      "expired": 1,
+      "expiringSoon": 1,
+      "outOfStock": 0,
+      "criticalLowStock": 0
+    }
+  }
+}
+```
+
+---
+
+## Category-Specific Alerts
+
+<api method="GET" endpoint="/api/alerts/category/:category" />
+
+Get all alerts for a specific category.
+
+**Access:** Private (all authenticated users)
+
+### Path Parameters
+
+<ParamField path="category" type="string" required>
+  Category name (case-insensitive)
+</ParamField>
+
+### Response
+
+<ResponseField name="category" type="string">
+  Category name
+</ResponseField>
+
+<ResponseField name="alerts" type="array">
+  Array of items with their alerts
+  <ResponseField name="alerts" type="array">
+    Array of alert objects for this item
+    <ResponseField name="type" type="string">
+      Alert type
+    </ResponseField>
+    <ResponseField name="severity" type="string">
+      Severity level
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      Alert message
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of items with alerts
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Alerts for Dairy category fetched successfully",
+  "data": {
+    "category": "Dairy",
+    "alerts": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "quantity": 25,
+        "alerts": [
+          {
+            "type": "expiring_soon",
+            "severity": "HIGH",
+            "message": "Expires in 2 days"
+          }
+        ]
+      },
+      {
+        "_id": "65a9876543210fedcba98765",
+        "productName": "Cheese",
+        "category": "Dairy",
+        "quantity": 3,
+        "alerts": [
+          {
+            "type": "low_stock",
+            "severity": "HIGH",
+            "message": "Only 3 units left"
+          }
+        ]
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+---
+
+## Alert Summary
+
+<api method="GET" endpoint="/api/alerts/summary" />
+
+Get dashboard summary of all alert counts.
+
+**Access:** Private (all authenticated users)
+
+### Response
+
+<ResponseField name="summary" type="object">
+  <ResponseField name="totalAlerts" type="number">
+    Total number of alerts
+  </ResponseField>
+  <ResponseField name="breakdown" type="object">
+    <ResponseField name="expired" type="number">
+      Count of expired items
+    </ResponseField>
+    <ResponseField name="expiringSoon" type="number">
+      Count of items expiring within 7 days
+    </ResponseField>
+    <ResponseField name="outOfStock" type="number">
+      Count of out-of-stock items
+    </ResponseField>
+    <ResponseField name="lowStock" type="number">
+      Count of low stock items (quantity < 10)
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="criticalCount" type="number">
+    Count of critical alerts (expired + out of stock)
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Alert summary fetched successfully",
+  "data": {
+    "summary": {
+      "totalAlerts": 15,
+      "breakdown": {
+        "expired": 2,
+        "expiringSoon": 4,
+        "outOfStock": 3,
+        "lowStock": 6
+      },
+      "criticalCount": 5
+    }
+  }
+}
+```
+
+---
+
+## Severity Levels
+
+| Severity | Description | Use Case |
+|----------|-------------|----------|
+| `CRITICAL` | Requires immediate action | Expired items, items expiring in ≤1 day |
+| `HIGH` | Urgent attention needed | Out of stock, very low stock (below 5), expiring in ≤3 days |
+| `MEDIUM` | Should be addressed soon | Low stock (5-9), expiring in 4-5 days |
+| `LOW` | For awareness | Expiring in 6-7 days |
+
+<Warning>
+  Always prioritize CRITICAL and HIGH severity alerts to prevent product waste and stockouts.
+</Warning>

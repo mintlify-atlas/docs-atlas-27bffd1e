@@ -1,0 +1,544 @@
+---
+title: Alert System
+description: Real-time notifications for critical inventory events including expired items, low stock, and expiring products
+---
+
+## Overview
+
+The SmartShelf alert system provides real-time notifications for critical inventory events, helping managers and administrators take immediate action to prevent stockouts, reduce waste, and maintain optimal inventory levels.
+
+## Alert Categories
+
+The system monitors four distinct alert types:
+
+<CardGroup cols={2}>
+  <Card title="Expired Items" icon="circle-xmark" color="#dc2626">
+    **Severity: CRITICAL**
+    
+    Items that have passed their expiry date. Immediate removal required for safety and compliance.
+  </Card>
+  
+  <Card title="Expiring Soon" icon="clock" color="#ea580c">
+    **Severity: HIGH/MEDIUM**
+    
+    Items expiring within 7 days. Priority sale or use recommended to prevent waste.
+  </Card>
+  
+  <Card title="Low Stock" icon="box-open" color="#ca8a04">
+    **Severity: HIGH/MEDIUM**
+    
+    Items below reorder threshold (default: 10 units). Reordering needed to prevent stockouts.
+  </Card>
+  
+  <Card title="Out of Stock" icon="box" color="#64748b">
+    **Severity: HIGH**
+    
+    Items with zero quantity. Immediate restocking required to fulfill orders.
+  </Card>
+</CardGroup>
+
+## Real-Time Notifications
+
+### Live Alert Feed
+
+The Manager Dashboard displays a live alert feed (ManagerDashboard.tsx:485-508):
+
+```typescript
+interface Alert {
+  id: string;
+  type: string;              // 'expired' | 'expiring_soon' | 'low_stock' | 'out_of_stock'
+  severity: string;          // 'critical' | 'high' | 'medium'
+  productName: string;
+  category: string;
+  message: string;           // Human-readable alert message
+  timestamp: string;         // ISO 8601 timestamp
+}
+```
+
+**Display Implementation:**
+```typescript
+<div className="space-y-2 max-h-64 overflow-y-auto">
+  {alerts.map(alert => (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border">
+      <span className="text-xl">{getSeverityIcon(alert.severity)}</span>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${getSeverityColor(alert.severity)}`}>
+          {alert.message}
+        </p>
+        <p className="text-xs text-slate-500 mt-1">
+          {alert.category} • Just now
+        </p>
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+### Severity Indicators
+
+Visual indicators for quick severity assessment:
+
+```typescript
+const getSeverityIcon = (severity: string) => {
+  switch (severity) {
+    case 'critical': return '🔴';
+    case 'high': return '🟠';
+    case 'medium': return '🟡';
+    default: return '🔵';
+  }
+};
+
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'critical': return 'text-red-600 dark:text-red-400';
+    case 'high': return 'text-orange-600 dark:text-orange-400';
+    case 'medium': return 'text-yellow-600 dark:text-yellow-400';
+    default: return 'text-blue-600 dark:text-blue-400';
+  }
+};
+```
+
+## Alert Types in Detail
+
+### Expired Items
+
+Items that have passed their expiry date (alertController.js:89-121):
+
+```javascript
+exports.getExpiredAlerts = async (req, res) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expiredItems = await Inventory.find({
+    expiryDate: { $lt: today }
+  })
+  .populate('createdBy', 'name email')
+  .sort({ expiryDate: 1 });  // Oldest expiry first
+
+  const alerts = expiredItems.map(item => {
+    const daysExpired = Math.ceil(
+      (today - new Date(item.expiryDate)) / (1000 * 60 * 60 * 24)
+    );
+    
+    return {
+      ...item.toObject(),
+      alertType: 'expired',
+      severity: 'CRITICAL',
+      daysExpired,
+      message: `Expired ${daysExpired} day${daysExpired !== 1 ? 's' : ''} ago`
+    };
+  });
+};
+```
+
+**Alert Message Format:**
+- "Expired 1 day ago"
+- "Expired 5 days ago"
+
+### Expiring Soon Alerts
+
+Items expiring within configurable timeframe (alertController.js:39-84):
+
+```javascript
+exports.getExpiringSoonAlerts = async (req, res) => {
+  const days = parseInt(req.query.days) || 7;  // Default: 7 days
+  
+  const today = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(today.getDate() + days);
+
+  const expiringSoonItems = await Inventory.find({
+    expiryDate: { $gte: today, $lte: futureDate },
+    quantity: { $gt: 0 }  // Only items in stock
+  })
+  .sort({ expiryDate: 1 });  // Closest expiry first
+
+  const alerts = expiringSoonItems.map(item => {
+    const daysUntilExpiry = Math.ceil(
+      (new Date(item.expiryDate) - today) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Dynamic severity based on urgency
+    let severity = 'LOW';
+    if (daysUntilExpiry <= 1) severity = 'CRITICAL';
+    else if (daysUntilExpiry <= 3) severity = 'HIGH';
+    else if (daysUntilExpiry <= 5) severity = 'MEDIUM';
+
+    return {
+      ...item.toObject(),
+      alertType: 'expiring_soon',
+      severity,
+      daysUntilExpiry,
+      message: `Expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+    };
+  });
+};
+```
+
+**Severity Rules:**
+- ≤ 1 day: CRITICAL
+- ≤ 3 days: HIGH
+- ≤ 5 days: MEDIUM
+- 6-7 days: LOW
+
+### Low Stock Alerts
+
+Items below threshold quantity (alertController.js:7-34):
+
+```javascript
+exports.getLowStockAlerts = async (req, res) => {
+  const threshold = parseInt(req.query.threshold) 
+    || parseInt(process.env.LOW_STOCK_THRESHOLD) 
+    || 10;  // Default threshold
+
+  const lowStockItems = await Inventory.find({
+    quantity: { $gt: 0, $lt: threshold }
+  })
+  .sort({ quantity: 1 });  // Lowest quantity first
+
+  const alerts = lowStockItems.map(item => ({
+    ...item.toObject(),
+    alertType: 'low_stock',
+    severity: item.quantity <= threshold / 2 ? 'HIGH' : 'MEDIUM',
+    message: `Only ${item.quantity} units left in stock`
+  }));
+};
+```
+
+**Threshold Configuration:**
+- Default: 10 units
+- Configurable via query parameter or environment variable
+- High severity if quantity ≤ 50% of threshold
+
+### Out of Stock Alerts
+
+Items with zero quantity (alertController.js:124-150):
+
+```javascript
+exports.getOutOfStockAlerts = async (req, res) => {
+  const outOfStockItems = await Inventory.find({
+    quantity: 0
+  })
+  .sort({ updatedAt: -1 });  // Most recently updated first
+
+  const alerts = outOfStockItems.map(item => ({
+    ...item.toObject(),
+    alertType: 'out_of_stock',
+    severity: 'HIGH',
+    message: 'Out of stock - Immediate restocking required'
+  }));
+};
+```
+
+## Alert API Endpoints
+
+### Get All Critical Alerts
+
+Combined view of all high-priority alerts (alertController.js:155-252):
+
+```javascript
+GET /api/alerts/critical
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Critical alerts fetched successfully",
+  "data": {
+    "alerts": [
+      {
+        "productName": "Fresh Milk",
+        "category": "Dairy",
+        "alertType": "expired",
+        "severity": "CRITICAL",
+        "priority": 1,
+        "message": "Expired 2 days ago"
+      }
+    ],
+    "count": 15,
+    "breakdown": {
+      "expired": 2,
+      "expiringSoon": 5,
+      "outOfStock": 3,
+      "criticalLowStock": 5
+    }
+  }
+}
+```
+
+**Priority Order:**
+1. Expired items (CRITICAL)
+2. Critically expiring items (≤3 days)
+3. Out of stock items (HIGH)
+4. Critical low stock (below 5 units)
+
+### Get Alert Summary
+
+Overall statistics (alertController.js:331-373):
+
+```javascript
+GET /api/alerts/summary
+```
+
+**Response:**
+```json
+{
+  "summary": {
+    "totalAlerts": 28,
+    "breakdown": {
+      "expired": 2,
+      "expiringSoon": 12,
+      "outOfStock": 3,
+      "lowStock": 11
+    },
+    "criticalCount": 5
+  }
+}
+```
+
+### Category-Specific Alerts
+
+Alerts filtered by category (alertController.js:257-326):
+
+```javascript
+GET /api/alerts/category/Dairy
+```
+
+**Response includes multiple alert types per item:**
+```json
+{
+  "category": "Dairy",
+  "alerts": [
+    {
+      "productName": "Fresh Milk",
+      "quantity": 3,
+      "alerts": [
+        {
+          "type": "expiring_soon",
+          "severity": "HIGH",
+          "message": "Expires in 2 days"
+        },
+        {
+          "type": "low_stock",
+          "severity": "HIGH",
+          "message": "Only 3 units left"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Individual Alert Endpoints
+
+<Tabs>
+  <Tab title="Expired">
+    ```javascript
+    GET /api/alerts/expired
+    ```
+    Returns all expired items
+  </Tab>
+  
+  <Tab title="Expiring Soon">
+    ```javascript
+    GET /api/alerts/expiring-soon?days=7
+    ```
+    Returns items expiring within specified days
+  </Tab>
+  
+  <Tab title="Low Stock">
+    ```javascript
+    GET /api/alerts/low-stock?threshold=10
+    ```
+    Returns items below threshold
+  </Tab>
+  
+  <Tab title="Out of Stock">
+    ```javascript
+    GET /api/alerts/out-of-stock
+    ```
+    Returns items with zero quantity
+  </Tab>
+</Tabs>
+
+## Notification Analytics Endpoint
+
+Special endpoint for Manager Dashboard (analyticsController.js:171-272):
+
+```javascript
+GET /api/analytics/notification-alerts?limit=10
+```
+
+**Features:**
+- Combines all alert types
+- Sorts by severity
+- Returns human-readable messages
+- Includes timestamps
+
+**Implementation:**
+```javascript
+const alerts = [];
+
+// Expired items
+expiredItems.forEach(item => {
+  alerts.push({
+    type: 'expired',
+    severity: 'critical',
+    message: `${item.productName} has expired ${daysExpired} days ago`
+  });
+});
+
+// Expiring soon
+expiringSoon.forEach(item => {
+  alerts.push({
+    type: 'expiring_soon',
+    severity: daysUntilExpiry <= 3 ? 'high' : 'medium',
+    message: `${item.productName} is expiring in ${daysUntilExpiry} days`
+  });
+});
+
+// Out of stock
+outOfStock.forEach(item => {
+  alerts.push({
+    type: 'out_of_stock',
+    severity: 'high',
+    message: `${item.productName} is out of stock`
+  });
+});
+
+// Low stock
+lowStock.forEach(item => {
+  alerts.push({
+    type: 'low_stock',
+    severity: item.quantity < 5 ? 'high' : 'medium',
+    message: `${item.productName} is running low (${item.quantity} units remaining)`
+  });
+});
+
+// Sort by severity
+const severityOrder = { critical: 1, high: 2, medium: 3, low: 4 };
+alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+```
+
+## Alert Configuration
+
+### Environment Variables
+
+```bash
+# .env file
+LOW_STOCK_THRESHOLD=10
+EXPIRY_ALERT_DAYS=7
+```
+
+### Runtime Configuration
+
+Alerts can be customized via query parameters:
+
+```javascript
+// Custom low stock threshold
+GET /api/alerts/low-stock?threshold=15
+
+// Custom expiry alert window
+GET /api/alerts/expiring-soon?days=14
+```
+
+## Integration with Other Features
+
+### Task Automation
+
+Critical alerts can trigger automatic task creation:
+
+```javascript
+if (alert.severity === 'CRITICAL') {
+  await taskService.create({
+    description: `URGENT: ${alert.message} - ${alert.productName}`,
+    assignedTo: warehouseManagerId,
+    priority: 'HIGH'
+  });
+}
+```
+
+### Dashboard Integration
+
+Alerts feed into dashboard KPIs:
+
+```typescript
+// Admin Dashboard Alert Summary
+const [expired, expiringSoon, outOfStock, lowStock] = await Promise.all([
+  Inventory.countDocuments({ expiryDate: { $lt: today } }),
+  Inventory.countDocuments({ 
+    expiryDate: { $gte: today, $lte: sevenDaysLater },
+    quantity: { $gt: 0 }
+  }),
+  Inventory.countDocuments({ quantity: 0 }),
+  Inventory.countDocuments({ quantity: { $gt: 0, $lt: 10 } })
+]);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Daily Alert Review">
+    - Review critical alerts first thing each morning
+    - Address expired items immediately
+    - Plan actions for high-severity alerts
+    - Monitor trends in alert frequency
+  </Accordion>
+  
+  <Accordion title="Threshold Optimization">
+    - Adjust thresholds based on consumption rates
+    - Different thresholds for different categories
+    - Consider supplier lead times
+    - Account for demand variability
+  </Accordion>
+  
+  <Accordion title="Alert Response Workflow">
+    1. Triage alerts by severity
+    2. Create tasks for action items
+    3. Document actions taken
+    4. Update inventory accordingly
+    5. Review and adjust thresholds
+  </Accordion>
+  
+  <Accordion title="Preventive Measures">
+    - Use FEFO to prevent expiry
+    - Implement automatic reordering
+    - Regular inventory audits
+    - Track alert trends
+  </Accordion>
+</AccordionGroup>
+
+## Performance Considerations
+
+<Note>
+  Alert queries are optimized with database indexes on:
+  - `expiryDate` (ascending)
+  - `quantity` (ascending)
+  - `updatedAt` (descending)
+</Note>
+
+## Access Control
+
+| Role | View Alerts | Configure Thresholds | Create Tasks from Alerts |
+|------|-------------|---------------------|-------------------------|
+| Admin | ✅ All | ✅ | ✅ |
+| Manager | ✅ All | ✅ | ✅ |
+| Worker | ❌ | ❌ | ❌ |
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="FEFO Ordering" icon="sort" href="/features/fefo-ordering">
+    Prevent expiry alerts with FEFO
+  </Card>
+  <Card title="Demand Forecasting" icon="chart-line" href="/features/demand-forecasting">
+    Predict low stock alerts
+  </Card>
+  <Card title="Task Management" icon="list-check" href="/features/task-management">
+    Create tasks from alerts
+  </Card>
+  <Card title="Analytics Dashboard" icon="chart-pie" href="/features/analytics-dashboard">
+    Visualize alert trends
+  </Card>
+</CardGroup>

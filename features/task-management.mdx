@@ -1,0 +1,642 @@
+---
+title: Task Management
+description: Create, assign, and track warehouse tasks with status updates and worker-specific views
+---
+
+## Overview
+
+The task management system enables managers and administrators to create, assign, and track warehouse tasks. Workers can view their assigned tasks and update progress through an intuitive interface with real-time status tracking.
+
+## Task Lifecycle
+
+<Steps>
+  <Step title="Pending">
+    Task is created and assigned to a worker. Awaiting action.
+  </Step>
+  <Step title="In Progress">
+    Worker has started working on the task. Active status.
+  </Step>
+  <Step title="Completed">
+    Task is finished. Archived for analytics.
+  </Step>
+</Steps>
+
+## Task Structure
+
+```typescript
+interface Task {
+  id: string;
+  description: string;          // Task details and instructions
+  assignedTo: string;           // Worker user ID
+  assignedBy: string;           // Manager/Admin user ID
+  status: 'Pending' | 'In Progress' | 'Completed';
+  createdAt: string;            // ISO 8601 timestamp
+  updatedAt: string;            // ISO 8601 timestamp
+}
+```
+
+## Task Creation and Assignment
+
+### Create Task API
+
+Managers and Admins can create tasks (taskController.js:144-199):
+
+```javascript
+POST /api/tasks
+```
+
+**Request Body:**
+```json
+{
+  "description": "Inspect expired items in dairy section",
+  "assignedTo": "673ab12c5f8e9a001234abcd"
+}
+```
+
+**Implementation:**
+```javascript
+exports.createTask = async (req, res) => {
+  const { description, assignedTo } = req.body;
+
+  // Validation
+  if (!description || !assignedTo) {
+    return sendErrorResponse(res, 'Please provide description and assignedTo', 400);
+  }
+
+  // Verify assignedTo user exists and is a Worker
+  const worker = await User.findById(assignedTo);
+  if (!worker) {
+    return sendErrorResponse(res, 'Assigned user not found', 404);
+  }
+
+  if (worker.role !== 'Worker') {
+    return sendErrorResponse(res, 'Tasks can only be assigned to Workers', 400);
+  }
+
+  if (!worker.isActive) {
+    return sendErrorResponse(res, 'Cannot assign task to inactive worker', 400);
+  }
+
+  // Create task
+  const task = await Task.create({
+    description,
+    assignedTo,
+    assignedBy: req.user.id  // Automatically set from auth token
+  });
+
+  const populatedTask = await Task.findById(task._id)
+    .populate('assignedTo', 'name email')
+    .populate('assignedBy', 'name email');
+};
+```
+
+**Validations:**
+- Description and assignedTo are required
+- Assigned user must exist
+- Assigned user must have "Worker" role
+- Worker must be active (not disabled)
+
+### Task Assignment UI
+
+The task creation form (TaskManagementPage.tsx:8-115):
+
+```typescript
+const AddEditTaskForm: React.FC<{
+  task: Task | null;
+  workers: User[];
+  onSave: (taskData: any) => void;
+  onCancel: () => void;
+}> = ({ task, workers, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({
+    description: task?.description || '',
+    assignedTo: task?.assignedTo || '',
+    status: task?.status || 'Pending',
+  });
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <textarea
+        name="description"
+        value={formData.description}
+        onChange={handleChange}
+        required
+        rows={4}
+        placeholder="Enter task description..."
+      />
+      
+      <select
+        name="assignedTo"
+        value={formData.assignedTo}
+        onChange={handleChange}
+        required
+      >
+        <option value="">Select Worker</option>
+        {workers.map(worker => (
+          <option key={worker.id} value={worker.id}>
+            {worker.name} ({worker.email})
+          </option>
+        ))}
+      </select>
+      
+      {task && (
+        <select name="status" value={formData.status}>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      )}
+    </form>
+  );
+};
+```
+
+### Get Available Workers
+
+Fetch active workers for task assignment (userController.js:217-235):
+
+```javascript
+GET /api/users/workers
+```
+
+**Response:**
+```json
+{
+  "workers": [
+    {
+      "id": "673ab12c5f8e9a001234abcd",
+      "name": "John Worker",
+      "email": "john@example.com"
+    }
+  ],
+  "count": 5
+}
+```
+
+**Implementation:**
+```javascript
+exports.getWorkers = async (req, res) => {
+  const workers = await User.find({ 
+    role: 'Worker',
+    isActive: true 
+  })
+  .select('name email')
+  .sort({ name: 1 });
+};
+```
+
+## Status Tracking
+
+### Update Task Status
+
+Workers can update their task status (taskController.js:260-303):
+
+```javascript
+PATCH /api/tasks/:id/status
+```
+
+**Request Body:**
+```json
+{
+  "status": "In Progress"
+}
+```
+
+**Implementation:**
+```javascript
+exports.updateTaskStatus = async (req, res) => {
+  const { status } = req.body;
+
+  if (!status) {
+    return sendErrorResponse(res, 'Please provide status', 400);
+  }
+
+  if (!['Pending', 'In Progress', 'Completed'].includes(status)) {
+    return sendErrorResponse(res, 'Invalid status value', 400);
+  }
+
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    return sendErrorResponse(res, 'Task not found', 404);
+  }
+
+  // Workers can only update their own tasks
+  if (req.user.role === 'Worker' && task.assignedTo.toString() !== req.user.id) {
+    return sendErrorResponse(res, 'Not authorized to update this task', 403);
+  }
+
+  task.status = status;
+  await task.save();
+};
+```
+
+**Access Control:**
+- Workers can only update their own tasks
+- Managers/Admins can update any task
+- Status must be valid: Pending, In Progress, or Completed
+
+### Worker Task Actions
+
+Quick action buttons for workers (WorkerDashboard.tsx:163-178):
+
+```typescript
+{task.status === 'Pending' && (
+  <button
+    onClick={() => handleStatusChange(task.id, 'In Progress')}
+    className="bg-yellow-500 text-white"
+  >
+    Start
+  </button>
+)}
+
+{task.status === 'In Progress' && (
+  <button
+    onClick={() => handleStatusChange(task.id, 'Completed')}
+    className="bg-green-500 text-white"
+  >
+    Complete
+  </button>
+)}
+```
+
+**Status Transition:**
+- Pending → "Start" button → In Progress
+- In Progress → "Complete" button → Completed
+
+## Worker-Specific Task Views
+
+### Worker Dashboard
+
+Workers see only their assigned tasks (WorkerDashboard.tsx:1-195):
+
+```typescript
+const WorkerDashboard: React.FC = () => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const fetchMyTasks = async () => {
+    const { tasks } = await taskService.getMyTasks({ limit: 100 });
+    setTasks(tasks);
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (statusFilter === 'all') return true;
+    return task.status === statusFilter;
+  });
+};
+```
+
+### Task Statistics
+
+Three KPI cards showing task breakdown (WorkerDashboard.tsx:56-106):
+
+```typescript
+const pendingCount = tasks.filter(t => t.status === 'Pending').length;
+const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
+const completedCount = tasks.filter(t => t.status === 'Completed').length;
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  {/* Pending Card */}
+  <div className="bg-card-light p-6 rounded-2xl">
+    <p className="text-sm text-slate-500">Pending</p>
+    <h3 className="text-3xl font-bold">{pendingCount}</h3>
+    <ArchiveBox className="w-6 h-6 text-slate-600" />
+  </div>
+  
+  {/* In Progress Card */}
+  <div className="bg-card-light p-6 rounded-2xl">
+    <p className="text-sm text-slate-500">In Progress</p>
+    <h3 className="text-3xl font-bold">{inProgressCount}</h3>
+    <ArchiveBox className="w-6 h-6 text-yellow-600" />
+  </div>
+  
+  {/* Completed Card */}
+  <div className="bg-card-light p-6 rounded-2xl">
+    <p className="text-sm text-slate-500">Completed</p>
+    <h3 className="text-3xl font-bold">{completedCount}</h3>
+    <ArchiveBox className="w-6 h-6 text-green-600" />
+  </div>
+</div>
+```
+
+### Status Filtering
+
+Filter buttons for task views (WorkerDashboard.tsx:114-144):
+
+```typescript
+<div className="flex gap-2">
+  <button
+    onClick={() => setStatusFilter('all')}
+    className={statusFilter === 'all' ? 'bg-primary text-white' : 'bg-slate-100'}
+  >
+    All
+  </button>
+  <button
+    onClick={() => setStatusFilter('Pending')}
+    className={statusFilter === 'Pending' ? 'bg-primary text-white' : 'bg-slate-100'}
+  >
+    Pending
+  </button>
+  <button
+    onClick={() => setStatusFilter('In Progress')}
+    className={statusFilter === 'In Progress' ? 'bg-primary text-white' : 'bg-slate-100'}
+  >
+    In Progress
+  </button>
+</div>
+```
+
+### Get My Tasks API
+
+Worker-specific endpoint (taskController.js:69-106):
+
+```javascript
+GET /api/tasks/my-tasks?status=Pending&limit=10
+```
+
+**Query Parameters:**
+- `status` - Filter by status (optional)
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 10)
+
+**Implementation:**
+```javascript
+exports.getMyTasks = async (req, res) => {
+  const query = { assignedTo: req.user.id };
+  
+  // Filter by status if provided
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  const tasks = await Task.find(query)
+    .populate('assignedBy', 'name email')
+    .sort({ createdAt: -1 });
+};
+```
+
+## Manager/Admin Task Management
+
+### Task List View
+
+Full task management interface (TaskManagementPage.tsx:117-299):
+
+```typescript
+<table className="w-full">
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Assigned To</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {tasks.map(task => (
+      <tr key={task.id}>
+        <td className="max-w-md truncate">{task.description}</td>
+        <td>{getWorkerName(task.assignedTo)}</td>
+        <td>
+          <span className={getStatusColor(task.status)}>
+            {task.status}
+          </span>
+        </td>
+        <td>
+          <button onClick={() => handleEdit(task)}>
+            <Edit className="w-5 h-5" />
+          </button>
+          <button onClick={() => handleDelete(task.id)}>
+            <Delete className="w-5 h-5" />
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+```
+
+### Get All Tasks API
+
+Manager/Admin endpoint (taskController.js:8-64):
+
+```javascript
+GET /api/tasks?status=Pending&assignedTo=673ab12c5f8e9a001234abcd&page=1&limit=10
+```
+
+**Query Parameters:**
+- `status` - Filter by status
+- `assignedTo` - Filter by worker ID
+- `search` - Search in description
+- `sortBy` - Field to sort by
+- `order` - Sort order (asc/desc)
+- `page` - Page number
+- `limit` - Items per page
+
+**Implementation:**
+```javascript
+exports.getAllTasks = async (req, res) => {
+  const query = {};
+  
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+  
+  if (req.query.assignedTo) {
+    query.assignedTo = req.query.assignedTo;
+  }
+  
+  if (req.query.search) {
+    query.description = { $regex: req.query.search, $options: 'i' };
+  }
+  
+  const tasks = await Task.find(query)
+    .populate('assignedTo', 'name email role')
+    .populate('assignedBy', 'name email role')
+    .sort(sortOption)
+    .skip(skip)
+    .limit(limit);
+};
+```
+
+### Update Task
+
+Modify task details (taskController.js:205-255):
+
+```javascript
+PUT /api/tasks/:id
+```
+
+**Request Body:**
+```json
+{
+  "description": "Updated task description",
+  "assignedTo": "673ab12c5f8e9a001234abce",
+  "status": "In Progress"
+}
+```
+
+**Features:**
+- Update description
+- Reassign to different worker
+- Change status
+- Partial updates supported
+
+### Delete Task
+
+Remove tasks (taskController.js:308-329):
+
+```javascript
+DELETE /api/tasks/:id
+```
+
+**Access Control:**
+- Only Manager/Admin can delete
+- Workers cannot delete tasks
+
+## Task Completion Analytics
+
+Track team performance (taskController.js:334-397):
+
+```javascript
+GET /api/tasks/analytics/completion-rate
+```
+
+**Response:**
+```json
+{
+  "analytics": {
+    "overall": {
+      "total": 150,
+      "pending": 25,
+      "inProgress": 30,
+      "completed": 95,
+      "completionRate": 63.33
+    },
+    "byWorker": [
+      {
+        "name": "John Worker",
+        "email": "john@example.com",
+        "tasks": [
+          { "status": "Pending", "count": 5 },
+          { "status": "In Progress", "count": 8 },
+          { "status": "Completed", "count": 22 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Implementation:**
+```javascript
+exports.getTaskCompletionRate = async (req, res) => {
+  const total = await Task.countDocuments();
+  const pending = await Task.countDocuments({ status: 'Pending' });
+  const inProgress = await Task.countDocuments({ status: 'In Progress' });
+  const completed = await Task.countDocuments({ status: 'Completed' });
+
+  const completionRate = total === 0 ? 0 : ((completed / total) * 100).toFixed(2);
+
+  const byWorker = await Task.aggregate([
+    {
+      $group: {
+        _id: { worker: '$assignedTo', status: '$status' },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id.worker',
+        foreignField: '_id',
+        as: 'workerInfo'
+      }
+    }
+  ]);
+};
+```
+
+## Status Color Coding
+
+Visual indicators for task status:
+
+```typescript
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Completed':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+    case 'In Progress':
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300';
+    case 'Pending':
+      return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300';
+    default:
+      return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300';
+  }
+};
+```
+
+## Access Control
+
+| Action | Admin | Manager | Worker |
+|--------|-------|---------|--------|
+| Create Task | ✅ | ✅ | ❌ |
+| View All Tasks | ✅ | ✅ | ❌ |
+| View My Tasks | - | - | ✅ |
+| Update Task Details | ✅ | ✅ | ❌ |
+| Update Own Task Status | - | - | ✅ |
+| Delete Task | ✅ | ✅ | ❌ |
+| View Analytics | ✅ | ✅ | ❌ |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Clear Task Descriptions">
+    - Use specific, actionable language
+    - Include location details (section, aisle, shelf)
+    - Specify expected outcome
+    - Add urgency level if needed
+    
+    **Good Examples:**
+    - "Inspect dairy section for items expiring within 2 days"
+    - "Restock produce aisle 3 with items from FEFO list"
+    - "Remove all expired items from bakery section"
+  </Accordion>
+  
+  <Accordion title="Task Assignment Strategy">
+    - Balance workload across workers
+    - Consider worker expertise and location
+    - Group related tasks for efficiency
+    - Prioritize urgent tasks
+  </Accordion>
+  
+  <Accordion title="Progress Monitoring">
+    - Review task completion rates daily
+    - Identify bottlenecks or delays
+    - Provide feedback to workers
+    - Adjust workload based on performance
+  </Accordion>
+  
+  <Accordion title="Task Documentation">
+    - Keep task history for accountability
+    - Track completion times
+    - Analyze patterns in task types
+    - Use data for process improvement
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users" href="/features/user-management">
+    Manage worker accounts
+  </Card>
+  <Card title="Alert System" icon="bell" href="/features/alert-system">
+    Create tasks from alerts
+  </Card>
+  <Card title="Worker Dashboard" icon="user" href="/features/analytics-dashboard">
+    Worker task interface
+  </Card>
+  <Card title="Analytics Dashboard" icon="chart-pie" href="/features/analytics-dashboard">
+    Task completion metrics
+  </Card>
+</CardGroup>

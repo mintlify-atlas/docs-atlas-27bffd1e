@@ -1,0 +1,238 @@
+---
+title: 'API Overview'
+description: 'Introduction to the SmartShelf RESTful API, architecture, and response standards'
+---
+
+## Introduction
+
+The SmartShelf API is a RESTful API built with Express.js that provides comprehensive inventory management capabilities. It follows REST principles and returns JSON-formatted responses for all endpoints.
+
+## Base URL
+
+```
+http://localhost:5000/api
+```
+
+All API endpoints are prefixed with `/api`. The default port is `5000` but can be configured via environment variables.
+
+## API Architecture
+
+SmartShelf API is built using:
+
+- **Express.js** - Web framework
+- **MongoDB** - Database with Mongoose ODM
+- **JWT** - Token-based authentication
+- **Helmet** - Security headers
+- **CORS** - Cross-origin resource sharing
+- **express-rate-limit** - Request throttling
+
+## RESTful Design Principles
+
+The API follows REST conventions:
+
+- **Resources** are represented as nouns (e.g., `/inventory`, `/tasks`, `/users`)
+- **HTTP methods** indicate actions:
+  - `GET` - Retrieve resources
+  - `POST` - Create new resources
+  - `PUT` - Update existing resources
+  - `DELETE` - Remove resources
+- **Stateless** requests with authentication via JWT tokens
+- **Consistent** URL structure and naming conventions
+
+## Response Format Standards
+
+### Success Response
+
+All successful responses follow this structure:
+
+```json
+{
+  "success": true,
+  "message": "Description of the operation",
+  "data": {
+    // Response payload (optional)
+  }
+}
+```
+
+**Example:**
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Manager"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+### Error Response
+
+All error responses follow this structure:
+
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errors": [
+    // Optional array of detailed errors
+  ]
+}
+```
+
+**Example:**
+
+```json
+{
+  "success": false,
+  "message": "Please provide all required fields"
+}
+```
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+<ResponseField name="200" type="OK">
+  Request succeeded
+</ResponseField>
+
+<ResponseField name="201" type="Created">
+  Resource successfully created
+</ResponseField>
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request parameters or validation failed
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Authentication required or invalid credentials
+</ResponseField>
+
+<ResponseField name="403" type="Forbidden">
+  Authenticated but not authorized for this action
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Requested resource does not exist
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error occurred
+</ResponseField>
+
+## Rate Limiting
+
+To prevent abuse, the API implements rate limiting:
+
+- **Window:** 15 minutes
+- **Limit:** 100 requests per IP address
+- **Headers:** Standard rate limit headers included in responses
+  - `RateLimit-Limit` - Total requests allowed
+  - `RateLimit-Remaining` - Requests remaining
+  - `RateLimit-Reset` - Time when limit resets
+
+When the limit is exceeded, you'll receive:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests from this IP, please try again later."
+}
+```
+
+## API Versioning
+
+Currently, the API is at version 1.0.0. The base path `/api` serves the current version. Future versions may introduce versioned paths like `/api/v2` to maintain backward compatibility.
+
+## Quick Start Example
+
+Here's a simple example to get started with the SmartShelf API:
+
+### 1. Check API Health
+
+```bash
+curl http://localhost:5000/health
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "SmartShelf API is running",
+  "timestamp": "2026-03-03T10:30:00.000Z",
+  "environment": "development"
+}
+```
+
+### 2. Register a New User
+
+```bash
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepass123"
+  }'
+```
+
+### 3. Make Authenticated Request
+
+```bash
+curl http://localhost:5000/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+## Endpoint Documentation
+
+Explore detailed documentation for each API module:
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    User registration, login, and JWT token management
+  </Card>
+  <Card title="Inventory" icon="boxes-stacked" href="/api/inventory">
+    Product and stock management endpoints
+  </Card>
+  <Card title="Users" icon="users" href="/api/users">
+    User management and role-based access control
+  </Card>
+  <Card title="Tasks" icon="list-check" href="/api/tasks">
+    Task assignment and tracking
+  </Card>
+  <Card title="Alerts" icon="bell" href="/api/alerts">
+    Low stock and system alerts
+  </Card>
+  <Card title="Analytics" icon="chart-line" href="/api/analytics">
+    Business intelligence, reporting, and demand forecasting
+  </Card>
+</CardGroup>
+
+## Security
+
+The API implements multiple security measures:
+
+- **Helmet.js** - Sets security HTTP headers
+- **CORS** - Configured for trusted origins only
+- **JWT** - Secure token-based authentication
+- **bcryptjs** - Password hashing with salt
+- **Rate limiting** - Protection against DoS attacks
+- **Input validation** - Using express-validator
+- **HttpOnly cookies** - Secure token storage option
+
+## Support
+
+For issues or questions:
+
+- Check the [Authentication Guide](/api/authentication) for auth-related questions
+- Review endpoint-specific documentation for detailed parameters
+- Ensure your requests include proper headers and authentication tokens

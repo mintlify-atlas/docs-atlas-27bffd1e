@@ -1,0 +1,390 @@
+---
+title: 'Task Management'
+description: 'Create, assign, and track tasks for workers'
+---
+
+## Overview
+
+The Task Management API allows managers and admins to create and assign tasks to workers, while workers can view and update their assigned tasks. All endpoints require authentication.
+
+## Get All Tasks
+
+<api method="GET" endpoint="/api/tasks" />
+
+Retrieve all tasks with pagination and filtering.
+
+**Access:** Private (Manager/Admin only)
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="number" default="10">
+  Number of tasks per page
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status: `Pending`, `In Progress`, or `Completed`
+</ParamField>
+
+<ParamField query="assignedTo" type="string">
+  Filter by assigned worker ID
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search by task description
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Field to sort by
+</ParamField>
+
+<ParamField query="order" type="string">
+  Sort order: `asc` or `desc`
+</ParamField>
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Tasks fetched successfully",
+  "data": {
+    "tasks": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "description": "Restock dairy products",
+        "status": "In Progress",
+        "assignedTo": {
+          "_id": "65a9876543210fedcba98765",
+          "name": "John Doe",
+          "email": "john@example.com",
+          "role": "Worker"
+        },
+        "assignedBy": {
+          "_id": "65a1111111111111111111111",
+          "name": "Manager User",
+          "email": "manager@example.com",
+          "role": "Manager"
+        },
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "updatedAt": "2024-01-15T14:20:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalTasks": 25,
+      "limit": 10
+    }
+  }
+}
+```
+
+---
+
+## Get My Tasks
+
+<api method="GET" endpoint="/api/tasks/my-tasks" />
+
+Get tasks assigned to the currently authenticated worker.
+
+**Access:** Private (all authenticated users, but workers only see their own)
+
+### Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="number" default="10">
+  Number of tasks per page
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status
+</ParamField>
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Your tasks fetched successfully",
+  "data": {
+    "tasks": [
+      {
+        "_id": "65a1234567890abcdef12345",
+        "description": "Restock dairy products",
+        "status": "In Progress",
+        "assignedBy": {
+          "name": "Manager User",
+          "email": "manager@example.com"
+        },
+        "createdAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 2,
+      "totalTasks": 15,
+      "limit": 10
+    }
+  }
+}
+```
+
+---
+
+## Get Task by ID
+
+<api method="GET" endpoint="/api/tasks/:id" />
+
+Get a single task by ID.
+
+**Access:** Private (Manager/Admin see all, Workers see only their own)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Task fetched successfully",
+  "data": {
+    "task": {
+      "_id": "65a1234567890abcdef12345",
+      "description": "Restock dairy products",
+      "status": "In Progress",
+      "assignedTo": {
+        "_id": "65a9876543210fedcba98765",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "role": "Worker"
+      },
+      "assignedBy": {
+        "_id": "65a1111111111111111111111",
+        "name": "Manager User",
+        "email": "manager@example.com",
+        "role": "Manager"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Create Task
+
+<api method="POST" endpoint="/api/tasks" />
+
+Create a new task and assign it to a worker.
+
+**Access:** Private (Manager/Admin only)
+
+### Request Body
+
+<ParamField path="description" type="string" required>
+  Task description
+</ParamField>
+
+<ParamField path="assignedTo" type="string" required>
+  ID of the worker to assign the task to
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "description": "Restock dairy products in refrigerated section",
+  "assignedTo": "65a9876543210fedcba98765"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Task created successfully",
+  "data": {
+    "task": {
+      "_id": "65a1234567890abcdef12345",
+      "description": "Restock dairy products in refrigerated section",
+      "status": "Pending",
+      "assignedTo": {
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "assignedBy": {
+        "name": "Manager User",
+        "email": "manager@example.com"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    }
+  }
+}
+```
+
+<Note>
+  Tasks can only be assigned to users with the "Worker" role. The assigned user must be active.
+</Note>
+
+---
+
+## Update Task
+
+<api method="PUT" endpoint="/api/tasks/:id" />
+
+Update a task's description, assignedTo, or status.
+
+**Access:** Private (Manager/Admin only)
+
+### Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField path="description" type="string">
+  Updated task description
+</ParamField>
+
+<ParamField path="assignedTo" type="string">
+  Updated worker ID
+</ParamField>
+
+<ParamField path="status" type="string">
+  Updated status: `Pending`, `In Progress`, or `Completed`
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "description": "Restock dairy products and organize by expiry date",
+  "status": "In Progress"
+}
+```
+
+---
+
+## Update Task Status
+
+<api method="PATCH" endpoint="/api/tasks/:id/status" />
+
+Quickly update only the task status.
+
+**Access:** Private (Workers can update their own tasks, Manager/Admin can update all)
+
+### Request Body
+
+<ParamField path="status" type="string" required>
+  New status: `Pending`, `In Progress`, or `Completed`
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "status": "Completed"
+}
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "message": "Task status updated successfully",
+  "data": {
+    "task": {
+      "_id": "65a1234567890abcdef12345",
+      "description": "Restock dairy products",
+      "status": "Completed",
+      "assignedTo": {
+        "name": "John Doe",
+        "email": "john@example.com"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Delete Task
+
+<api method="DELETE" endpoint="/api/tasks/:id" />
+
+Delete a task.
+
+**Access:** Private (Manager/Admin only)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Task deleted successfully",
+  "data": null
+}
+```
+
+---
+
+## Task Analytics
+
+### Get Task Completion Rate
+
+<api method="GET" endpoint="/api/tasks/analytics/completion-rate" />
+
+Get task completion analytics including overall statistics and breakdown by worker.
+
+**Access:** Private (Manager/Admin only)
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Task completion analytics fetched successfully",
+  "data": {
+    "analytics": {
+      "overall": {
+        "total": 50,
+        "pending": 10,
+        "inProgress": 15,
+        "completed": 25,
+        "completionRate": 50.0
+      },
+      "byWorker": [
+        {
+          "_id": "65a9876543210fedcba98765",
+          "name": "John Doe",
+          "email": "john@example.com",
+          "tasks": [
+            { "status": "Pending", "count": 2 },
+            { "status": "In Progress", "count": 3 },
+            { "status": "Completed", "count": 10 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+## Role-Based Access
+
+| Endpoint | Worker | Manager | Admin |
+|----------|--------|---------|-------|
+| GET /tasks | ❌ | ✅ | ✅ |
+| GET /tasks/my-tasks | ✅ | ✅ | ✅ |
+| POST /tasks | ❌ | ✅ | ✅ |
+| PUT /tasks/:id | ❌ | ✅ | ✅ |
+| PATCH /tasks/:id/status | ✅ (own) | ✅ | ✅ |
+| DELETE /tasks/:id | ❌ | ✅ | ✅ |
+| GET /tasks/analytics/* | ❌ | ✅ | ✅ |

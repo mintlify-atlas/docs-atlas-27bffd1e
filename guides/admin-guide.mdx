@@ -1,0 +1,278 @@
+---
+title: Administrator Guide
+description: Complete guide for SmartShelf administrators including system-wide management, user administration, and best practices
+---
+
+## Overview
+
+As a SmartShelf Administrator, you have full access to all system features and are responsible for user management and system-wide oversight. This guide covers your key responsibilities and workflows.
+
+## Admin Capabilities
+
+According to the permission matrix, administrators have the following privileges:
+
+| Feature | Access Level |
+|---------|-------------|
+| Dashboard Overview | ✅ Full Access |
+| View Inventory | ✅ Full Access |
+| Add/Edit Inventory | ✅ Full Access |
+| Delete Inventory | ✅ Full Access |
+| **User Management** | ✅ Full Access (Admin Only) |
+| Create Tasks | ✅ Full Access |
+| View All Tasks | ✅ Full Access |
+| Update Task Status | ✅ Full Access |
+| View Analytics | ✅ Full Access |
+| FEFO Ordering | ✅ Full Access |
+| Demand Forecast | ✅ Full Access |
+
+## Dashboard Overview
+
+Your admin dashboard provides system-wide insights at a glance:
+
+<Card title="Key Metrics" icon="chart-bar">
+  The dashboard displays four primary stat cards:
+  - **Total Items**: Overall count of inventory items in the system
+  - **Total Quantity**: Sum of all inventory quantities
+  - **Low Stock**: Items below reorder threshold
+  - **Critical Alerts**: Expired and expiring soon items combined
+</Card>
+
+### Alert Summary
+
+Monitor critical system alerts organized by severity:
+
+- **Expired Items** (🔴 Red): Items past expiration date
+- **Expiring Soon** (🟠 Orange): Items expiring within 7 days
+- **Low Stock** (🟡 Yellow): Items below stock threshold
+- **Out of Stock** (⚫ Gray): Items with zero quantity
+
+### Category Distribution
+
+View inventory breakdown by category with:
+- Category name
+- Item count per category
+- Total quantity per category
+
+## User Management
+
+<Warning>
+User management is an **Admin-only** feature. Managers and Workers cannot access this functionality.
+</Warning>
+
+### Creating New Users
+
+<Steps>
+  <Step title="Navigate to User Management">
+    Access the User Management page from the main navigation menu.
+  </Step>
+  
+  <Step title="Click 'Add User' Button">
+    Open the user creation modal.
+  </Step>
+  
+  <Step title="Fill in User Details">
+    Provide the following information:
+    - **Name**: Full name of the user
+    - **Email**: Valid email address (used for login)
+    - **Password**: Secure password (minimum requirements apply)
+    - **Role**: Select from Admin, Manager, or Worker
+  </Step>
+  
+  <Step title="Submit and Verify">
+    Click "Create User" and verify the new user appears in the user list.
+  </Step>
+</Steps>
+
+### Updating User Information
+
+<Steps>
+  <Step title="Locate the User">
+    Find the user in the user management table.
+  </Step>
+  
+  <Step title="Click Edit Button">
+    Open the edit modal for that user.
+  </Step>
+  
+  <Step title="Modify Details">
+    Update name, email, role, or reset password as needed.
+  </Step>
+  
+  <Step title="Save Changes">
+    Confirm the updates and verify changes are reflected.
+  </Step>
+</Steps>
+
+### Deleting Users
+
+<Warning>
+Deleting a user is permanent and cannot be undone. Ensure all assigned tasks are reassigned before deletion.
+</Warning>
+
+<Steps>
+  <Step title="Select User to Delete">
+    Identify the user account to remove.
+  </Step>
+  
+  <Step title="Click Delete Button">
+    A confirmation dialog will appear.
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    Review the warning and confirm deletion if certain.
+  </Step>
+</Steps>
+
+## Inventory Management
+
+Admins have full CRUD access to inventory:
+
+### Adding Inventory Items
+
+<Card title="Required Fields">
+  - Product Name
+  - Category (Dairy, Bakery, Meat, Seafood, etc.)
+  - SKU (Stock Keeping Unit)
+  - Quantity
+  - Purchase Date
+  - Expiry Date
+  - Supplier
+</Card>
+
+### Best Practices for Inventory
+
+<AccordionGroup>
+  <Accordion title="SKU Naming Convention">
+    Use a consistent format: `CATEGORY-NUMBER` (e.g., DA-001 for Dairy, BK-001 for Bakery)
+  </Accordion>
+  
+  <Accordion title="Expiry Date Management">
+    Always enter accurate expiry dates to ensure FEFO ordering works correctly.
+  </Accordion>
+  
+  <Accordion title="Stock Threshold Settings">
+    Set appropriate low stock thresholds based on consumption patterns for each category.
+  </Accordion>
+</AccordionGroup>
+
+## Task Management
+
+Create and assign tasks to workers:
+
+<Steps>
+  <Step title="Navigate to Task Management">
+    Access the task management interface.
+  </Step>
+  
+  <Step title="Create New Task">
+    Click "Add Task" and provide:
+    - Task description
+    - Assigned worker (select from dropdown)
+  </Step>
+  
+  <Step title="Monitor Task Progress">
+    Track task status: Pending → In Progress → Completed
+  </Step>
+</Steps>
+
+## Analytics Access
+
+As an admin, you have access to:
+
+- **FEFO Ordering**: View items prioritized by expiry date
+- **Demand Forecasting**: 7-day projections for inventory items
+- **Top Selling Products**: Based on sales velocity
+- **Alert Notifications**: Real-time system alerts
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Audits" icon="clipboard-check">
+    Perform weekly reviews of user accounts and their assigned roles to ensure proper access control.
+  </Card>
+  
+  <Card title="Monitor Critical Alerts" icon="bell">
+    Check the alert summary daily to address expired and low stock items promptly.
+  </Card>
+  
+  <Card title="User Training" icon="graduation-cap">
+    Ensure all new users receive proper training on their role-specific features before system access.
+  </Card>
+  
+  <Card title="Password Security" icon="lock">
+    Enforce strong password policies and periodic password updates for all users.
+  </Card>
+</CardGroup>
+
+## Security Considerations
+
+<Note>
+Administrators should:
+- Use strong, unique passwords
+- Never share admin credentials
+- Review user activity logs regularly
+- Remove inactive user accounts promptly
+- Follow the principle of least privilege when assigning roles
+</Note>
+
+## Common Admin Workflows
+
+### Onboarding a New Manager
+
+<Steps>
+  <Step title="Create Manager Account">
+    Add new user with "Manager" role in User Management.
+  </Step>
+  
+  <Step title="Verify Permissions">
+    Confirm they can access inventory, tasks, and analytics but NOT user management.
+  </Step>
+  
+  <Step title="Provide Training">
+    Walk through manager-specific features like FEFO ordering and demand forecasting.
+  </Step>
+</Steps>
+
+### Handling System Alerts
+
+<Steps>
+  <Step title="Review Alert Dashboard">
+    Check critical alerts on the dashboard daily.
+  </Step>
+  
+  <Step title="Create Tasks for Workers">
+    Assign tasks to workers to address expired items or low stock issues.
+  </Step>
+  
+  <Step title="Update Inventory">
+    Remove expired items or add new stock as needed.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot Delete User">
+    Ensure the user has no pending or in-progress tasks. Reassign or complete tasks first.
+  </Accordion>
+  
+  <Accordion title="Permission Issues">
+    Verify the user's role is set correctly. Only Admins can access User Management.
+  </Accordion>
+  
+  <Accordion title="Dashboard Not Loading">
+    Check your internet connection and ensure the backend API is running on port 5000.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Manager Guide" icon="users" href="/guides/manager-guide">
+    Learn about manager-specific features and workflows
+  </Card>
+  
+  <Card title="Worker Guide" icon="clipboard-list" href="/guides/worker-guide">
+    Understand worker task management capabilities
+  </Card>
+</CardGroup>

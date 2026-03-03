@@ -1,0 +1,626 @@
+---
+title: User Management
+description: Role-based access control with Admin, Manager, and Worker roles and comprehensive user CRUD operations
+---
+
+## Overview
+
+SmartShelf implements a comprehensive user management system with role-based access control (RBAC). Administrators can create, update, and manage user accounts with three distinct roles, each having specific permissions and access levels.
+
+## Role-Based Access Control
+
+The system supports three user roles with hierarchical permissions:
+
+<CardGroup cols={3}>
+  <Card title="Admin" icon="user-shield" color="#dc2626">
+    **Full System Access**
+    
+    - All Manager permissions
+    - User management (CRUD)
+    - System configuration
+    - Complete data access
+  </Card>
+  
+  <Card title="Manager" icon="user-tie" color="#f59e0b">
+    **Operational Management**
+    
+    - Inventory management
+    - Task creation/assignment
+    - Analytics & reports
+    - FEFO & forecasting
+  </Card>
+  
+  <Card title="Worker" icon="user" color="#3b82f6">
+    **Task Execution**
+    
+    - View inventory
+    - View assigned tasks
+    - Update task status
+    - Limited dashboard
+  </Card>
+</CardGroup>
+
+## Permission Matrix
+
+Detailed permission breakdown from README.md:
+
+| Feature | Admin | Manager | Worker |
+|---------|-------|---------|--------|
+| **Dashboard** |
+| Dashboard Overview | ✅ | ✅ | ✅ |
+| **Inventory** |
+| View Inventory | ✅ | ✅ | ✅ |
+| Add/Edit Inventory | ✅ | ✅ | ❌ |
+| Delete Inventory | ✅ | ✅ | ❌ |
+| **User Management** |
+| User Management | ✅ | ❌ | ❌ |
+| **Tasks** |
+| Create Tasks | ✅ | ✅ | ❌ |
+| View All Tasks | ✅ | ✅ | ❌ |
+| View My Tasks | - | - | ✅ |
+| Update Task Status | ✅ | ✅ | ✅ (own) |
+| **Analytics** |
+| View Analytics | ✅ | ✅ | ❌ |
+| FEFO Ordering | ✅ | ✅ | ❌ |
+| Demand Forecast | ✅ | ✅ | ❌ |
+
+## User CRUD Operations
+
+### Get All Users
+
+Retrieve all users with filtering (userController.js:7-57):
+
+```javascript
+GET /api/users?role=Worker&isActive=true&search=john&page=1&limit=10
+```
+
+**Query Parameters:**
+- `role` - Filter by role (Admin, Manager, Worker)
+- `isActive` - Filter by active status (true/false)
+- `search` - Search by name or email
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 10)
+
+**Implementation:**
+```javascript
+exports.getAllUsers = async (req, res) => {
+  const query = {};
+  
+  // Filter by role
+  if (req.query.role) {
+    query.role = req.query.role;
+  }
+
+  // Filter by active status
+  if (req.query.isActive !== undefined) {
+    query.isActive = req.query.isActive === 'true';
+  }
+
+  // Search by name or email
+  if (req.query.search) {
+    query.$or = [
+      { name: { $regex: req.query.search, $options: 'i' } },
+      { email: { $regex: req.query.search, $options: 'i' } }
+    ];
+  }
+
+  const users = await User.find(query)
+    .select('-password')  // Exclude password from response
+    .sort({ createdAt: -1 });
+};
+```
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "id": "673ab12c5f8e9a001234abcd",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "Worker",
+      "isActive": true,
+      "createdAt": "2025-11-15T10:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 3,
+    "totalUsers": 25,
+    "limit": 10
+  }
+}
+```
+
+### Create User
+
+Admins can create new user accounts (userController.js:86-127):
+
+```javascript
+POST /api/users
+```
+
+**Request Body:**
+```json
+{
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "password": "SecurePass123!",
+  "role": "Manager"
+}
+```
+
+**Implementation:**
+```javascript
+exports.createUser = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  // Validation
+  if (!name || !email || !password || !role) {
+    return sendErrorResponse(res, 'Please provide all required fields', 400);
+  }
+
+  // Check if user already exists
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    return sendErrorResponse(res, 'User with this email already exists', 400);
+  }
+
+  // Create user
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    password,  // Automatically hashed by User model pre-save hook
+    role
+  });
+
+  // Return user without password
+  sendSuccessResponse(res, 'User created successfully', {
+    user: user.toSafeObject()
+  }, 201);
+};
+```
+
+**Validations:**
+- All fields required (name, email, password, role)
+- Email must be unique
+- Email automatically converted to lowercase
+- Password automatically hashed using bcrypt
+- Role must be: Admin, Manager, or Worker
+
+<Warning>
+  Passwords are automatically hashed using bcrypt before storage. Never store plain-text passwords.
+</Warning>
+
+### Update User
+
+Modify user account details (userController.js:132-181):
+
+```javascript
+PUT /api/users/:id
+```
+
+**Request Body:**
+```json
+{
+  "name": "Jane Smith Updated",
+  "email": "jane.new@example.com",
+  "role": "Admin",
+  "isActive": true
+}
+```
+
+**Implementation:**
+```javascript
+exports.updateUser = async (req, res) => {
+  const { name, email, role, isActive } = req.body;
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return sendErrorResponse(res, 'User not found', 404);
+  }
+
+  // Update fields
+  if (name) user.name = name;
+  if (role) user.role = role;
+  if (typeof isActive !== 'undefined') user.isActive = isActive;
+  
+  if (email) {
+    // Check if email is already taken by another user
+    const existingUser = await User.findOne({ 
+      email: email.toLowerCase(),
+      _id: { $ne: user._id }
+    });
+    
+    if (existingUser) {
+      return sendErrorResponse(res, 'Email already in use', 400);
+    }
+    
+    user.email = email.toLowerCase();
+  }
+
+  await user.save();
+};
+```
+
+**Features:**
+- Partial updates supported
+- Email uniqueness validation
+- Cannot set duplicate email
+- Active status toggle (enable/disable user)
+- Role changes allowed
+
+### Delete User
+
+Remove user accounts (userController.js:186-212):
+
+```javascript
+DELETE /api/users/:id
+```
+
+**Implementation:**
+```javascript
+exports.deleteUser = async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return sendErrorResponse(res, 'User not found', 404);
+  }
+
+  // Prevent admin from deleting themselves
+  if (user._id.toString() === req.user.id) {
+    return sendErrorResponse(res, 'You cannot delete your own account', 400);
+  }
+
+  await user.deleteOne();
+};
+```
+
+**Safety Features:**
+- Admins cannot delete their own account
+- Deletion is permanent (no soft delete)
+- Associated tasks remain but show "Unknown" worker
+
+<Note>
+  Consider implementing soft delete (isActive: false) instead of permanent deletion to preserve audit trails.
+</Note>
+
+## User Management UI
+
+### User List Table
+
+Comprehensive user management interface (UserManagementPage.tsx:110-254):
+
+```typescript
+<table className="w-full text-left">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {users.map(user => (
+      <tr key={user.id}>
+        <td className="font-medium">{user.name}</td>
+        <td className="text-slate-500">{user.email}</td>
+        <td>
+          <span className={getRoleBadgeColor(user.role)}>
+            {user.role}
+          </span>
+        </td>
+        <td className="flex space-x-2 justify-end">
+          <button onClick={() => handleEdit(user)}>
+            <Edit className="w-5 h-5" />
+          </button>
+          <button onClick={() => handleDelete(user.id)}>
+            <Delete className="w-5 h-5" />
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+```
+
+### Role Badge Colors
+
+Color-coded role indicators:
+
+```typescript
+const getRoleBadgeColor = (role: string) => {
+  if (role === 'Admin') {
+    return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+  } else if (role === 'Manager') {
+    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300';
+  } else {
+    return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+  }
+};
+```
+
+### Add/Edit User Form
+
+Modal form for user creation/editing (UserManagementPage.tsx:7-108):
+
+```typescript
+const AddEditUserForm: React.FC<{ 
+  user: User | null; 
+  onSave: (userData: any) => void; 
+  onCancel: () => void; 
+}> = ({ user, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    role: user?.role || 'Worker',
+    password: '',  // Only for new users
+  });
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" name="name" required />
+      <input type="email" name="email" required />
+      
+      {!user && (
+        <input 
+          type="password" 
+          name="password" 
+          required={!user}
+          minLength={6}
+          placeholder="Minimum 6 characters"
+        />
+      )}
+      
+      <select name="role">
+        <option value="Admin">Admin</option>
+        <option value="Manager">Manager</option>
+        <option value="Worker">Worker</option>
+      </select>
+    </form>
+  );
+};
+```
+
+**Form Features:**
+- Password field only shown for new users
+- Email validation
+- Minimum password length: 6 characters
+- Role dropdown with all three options
+- Loading states during save
+
+## User Statistics
+
+Get user account statistics (userController.js:240-271):
+
+```javascript
+GET /api/users/stats
+```
+
+**Response:**
+```json
+{
+  "stats": {
+    "totalUsers": 45,
+    "activeUsers": 42,
+    "inactiveUsers": 3,
+    "byRole": {
+      "Admin": 2,
+      "Manager": 8,
+      "Worker": 35
+    }
+  }
+}
+```
+
+**Implementation:**
+```javascript
+exports.getUserStats = async (req, res) => {
+  const totalUsers = await User.countDocuments();
+  const activeUsers = await User.countDocuments({ isActive: true });
+  const inactiveUsers = await User.countDocuments({ isActive: false });
+  
+  const usersByRole = await User.aggregate([
+    {
+      $group: {
+        _id: '$role',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const stats = {
+    totalUsers,
+    activeUsers,
+    inactiveUsers,
+    byRole: usersByRole.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {})
+  };
+};
+```
+
+## Authentication Integration
+
+User management integrates with JWT authentication:
+
+### Password Security
+
+Passwords are hashed using bcrypt:
+
+```javascript
+// User model pre-save hook
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+```
+
+### Safe User Object
+
+Exclude password from responses:
+
+```javascript
+userSchema.methods.toSafeObject = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
+```
+
+## Access Control Middleware
+
+Role-based route protection:
+
+```javascript
+// Admin-only routes
+router.get('/users', authMiddleware, roleMiddleware(['Admin']), getAllUsers);
+router.post('/users', authMiddleware, roleMiddleware(['Admin']), createUser);
+
+// Manager/Admin routes
+router.post('/tasks', authMiddleware, roleMiddleware(['Manager', 'Admin']), createTask);
+
+// All authenticated users
+router.get('/inventory', authMiddleware, getAllInventory);
+```
+
+## Active Status Management
+
+### Enable/Disable Users
+
+Toggle user active status without deletion:
+
+```javascript
+// Disable user
+PUT /api/users/:id
+{
+  "isActive": false
+}
+
+// Enable user
+PUT /api/users/:id
+{
+  "isActive": true
+}
+```
+
+**Effects of Disabled Status:**
+- User cannot log in
+- Existing sessions invalidated
+- Cannot be assigned new tasks
+- Existing task assignments remain
+- User data preserved for audit trails
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Password Policies">
+    - Minimum 6 characters (consider increasing to 8+)
+    - Encourage strong passwords with:
+      - Uppercase and lowercase letters
+      - Numbers
+      - Special characters
+    - Implement password complexity validation
+    - Consider password expiration policies
+  </Accordion>
+  
+  <Accordion title="User Account Lifecycle">
+    **Onboarding:**
+    1. Create user account with Worker role
+    2. Send welcome email with login credentials
+    3. Assign initial training tasks
+    4. Monitor first-week activity
+    
+    **Offboarding:**
+    1. Disable account (set isActive: false)
+    2. Reassign active tasks to other workers
+    3. Archive user data for compliance
+    4. Keep account for audit purposes
+  </Accordion>
+  
+  <Accordion title="Role Assignment Guidelines">
+    - Start new users as Workers
+    - Promote to Manager after proven competence
+    - Limit Admin accounts to 2-3 key personnel
+    - Regular review of role assignments
+    - Document role change reasons
+  </Accordion>
+  
+  <Accordion title="Security Considerations">
+    - Never share Admin credentials
+    - Regularly audit user access logs
+    - Disable inactive accounts after 90 days
+    - Implement two-factor authentication (future)
+    - Monitor for suspicious login attempts
+  </Accordion>
+</AccordionGroup>
+
+## User Model Schema
+
+```javascript
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  role: {
+    type: String,
+    enum: ['Admin', 'Manager', 'Worker'],
+    default: 'Worker'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true  // Adds createdAt and updatedAt
+});
+```
+
+## API Summary
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | `/api/users` | Get all users | Admin |
+| GET | `/api/users/:id` | Get user by ID | Admin |
+| POST | `/api/users` | Create user | Admin |
+| PUT | `/api/users/:id` | Update user | Admin |
+| DELETE | `/api/users/:id` | Delete user | Admin |
+| GET | `/api/users/workers` | Get active workers | Manager/Admin |
+| GET | `/api/users/stats` | Get user statistics | Admin |
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Task Management" icon="list-check" href="/features/task-management">
+    Assign tasks to workers
+  </Card>
+  <Card title="Analytics Dashboard" icon="chart-pie" href="/features/analytics-dashboard">
+    Role-based dashboards
+  </Card>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    Login and JWT tokens
+  </Card>
+  <Card title="User Management API" icon="shield" href="/api/users">
+    User endpoints and permissions
+  </Card>
+</CardGroup>
