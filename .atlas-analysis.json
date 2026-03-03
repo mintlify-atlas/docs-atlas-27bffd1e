@@ -1,0 +1,113 @@
+{
+  "projectType": "saas",
+  "projectName": "SmartShelf",
+  "projectDescription": "AI-powered warehouse inventory management system with real-time tracking, FEFO ordering, and demand forecasting.",
+  "theme": "sequoia",
+  "primaryColor": "#2563EB",
+  "lightColor": "#60A5FA",
+  "darkColor": "#1E40AF",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/inventory-management",
+              "features/analytics-dashboard",
+              "features/fefo-ordering",
+              "features/demand-forecasting",
+              "features/alert-system",
+              "features/task-management",
+              "features/user-management"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/admin-guide",
+              "guides/manager-guide",
+              "guides/worker-guide"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/database-setup",
+              "configuration/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/auth",
+              "api/inventory",
+              "api/tasks",
+              "api/analytics",
+              "api/alerts",
+              "api/users"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time inventory tracking with category-based filtering",
+    "FEFO (First Expired, First Out) ordering system",
+    "AI-powered demand forecasting with 7-day projections",
+    "Live alert system for expired, expiring, and low-stock items",
+    "Role-based task management (Admin, Manager, Worker)",
+    "Comprehensive analytics dashboards",
+    "JWT-based authentication with role-based access control",
+    "Multi-field search across products, SKUs, and suppliers"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/register - Register new user",
+    "POST /api/auth/login - Authenticate user",
+    "GET /api/auth/me - Get current user profile",
+    "GET /api/inventory - List all inventory items",
+    "POST /api/inventory - Create inventory item",
+    "PUT /api/inventory/:id - Update inventory item",
+    "DELETE /api/inventory/:id - Delete inventory item",
+    "GET /api/inventory/analytics/summary - Get inventory summary",
+    "GET /api/inventory/analytics/by-category - Get inventory by category",
+    "GET /api/tasks - List all tasks",
+    "GET /api/tasks/my-tasks - Get assigned tasks for current user",
+    "POST /api/tasks - Create new task",
+    "PATCH /api/tasks/:id/status - Update task status",
+    "GET /api/analytics/demand-forecast - Get 7-day demand forecast",
+    "GET /api/analytics/fefo-ordering - Get FEFO ordered items",
+    "GET /api/analytics/top-selling - Get top selling products",
+    "GET /api/analytics/notification-alerts - Get live notification alerts",
+    "GET /api/alerts/low-stock - Get low stock alerts",
+    "GET /api/alerts/expiring-soon - Get expiring soon alerts",
+    "GET /api/alerts/critical - Get critical alerts",
+    "GET /api/users - List all users (Admin only)",
+    "POST /api/users - Create user (Admin only)",
+    "PUT /api/users/:id - Update user (Admin only)",
+    "DELETE /api/users/:id - Delete user (Admin only)"
+  ]
+}
